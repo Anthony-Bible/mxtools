@@ -64,13 +64,13 @@ Testing, documentation, and optimization
 **MILESTONE 4: SMTP diagnostics functionality complete**
 
 ### Email Authentication Implementation
-28. [ ] Implement SPF record retrieval and parsing (1d)
-29. [ ] Add SPF validation logic (or integrate with library) (2d)
-30. [ ] Implement DKIM record retrieval and parsing (1d)
-31. [ ] Add DKIM validation logic (requires email input) (3d)
-32. [ ] Implement DMARC record retrieval and parsing (1d)
-33. [ ] Add DMARC policy evaluation logic (2d)
-34. [ ] Implement email header analysis functionality (2d)
+28. [x] Implement SPF record retrieval and parsing (1d)
+29. [x] Add SPF validation logic (or integrate with library) (2d)
+30. [x] Implement DKIM record retrieval and parsing (1d)
+31. [x] Add DKIM validation logic (requires email input) (3d)
+32. [x] Implement DMARC record retrieval and parsing (1d)
+33. [x] Add DMARC policy evaluation logic (2d)
+34. [x] Implement email header analysis functionality (2d)
 
 **MILESTONE 5: Email authentication functionality complete**
 

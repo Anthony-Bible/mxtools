@@ -45,6 +45,10 @@ type AuthResult struct {
 	DMARCRecord string `json:"dmarcRecord,omitempty"`
 	DMARCPolicy string `json:"dmarcPolicy,omitempty"` // p= tag
 	DMARCError  string `json:"dmarcError,omitempty"`
+	DKIMRecord  string `json:"dkimRecord,omitempty"`
+	DKIMResult  string `json:"dkimResult,omitempty"` // Pass, Fail, etc.
+	DKIMError   string `json:"dkimError,omitempty"`
+	HeaderAuth  map[string]string `json:"headerAuth,omitempty"` // Results from email header analysis
 }
 
 // DomainHealthReport represents a comprehensive report for a domain.
