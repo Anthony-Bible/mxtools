@@ -12,6 +12,7 @@ import (
 
 	"mxclone/pkg/dns"
 	"mxclone/pkg/types"
+	"mxclone/pkg/validation"
 )
 
 // dnsCmd represents the dns command
@@ -22,14 +23,39 @@ var DnsCmd = &cobra.Command{
 Supports various record types including A, AAAA, MX, TXT, CNAME, NS, SOA, PTR.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Get and validate domain
 		domain := args[0]
-		recordType, _ := cmd.Flags().GetString("type")
-		server, _ := cmd.Flags().GetString("server")
+		domain = validation.SanitizeDomain(domain)
+		if err := validation.ValidateDomain(domain); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Get command flags
 		advanced, _ := cmd.Flags().GetBool("advanced")
 		all, _ := cmd.Flags().GetBool("all")
 		timeout, _ := cmd.Flags().GetInt("timeout")
 		retries, _ := cmd.Flags().GetInt("retries")
 		outputFormat, _ := cmd.Flags().GetString("output")
+
+		// Get and validate record type
+		recordType, _ := cmd.Flags().GetString("type")
+		recordType = validation.SanitizeDNSRecordType(recordType)
+		if !all {
+			if err := validation.ValidateDNSRecordType(recordType); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		// Get and validate server if provided
+		server, _ := cmd.Flags().GetString("server")
+		if server != "" {
+			if err := validation.ValidateServer(server); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		}
 
 		fmt.Printf("Performing DNS lookup for %s (type: %s)...\n", domain, recordType)
 

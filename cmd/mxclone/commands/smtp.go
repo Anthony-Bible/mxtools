@@ -14,6 +14,7 @@ import (
 	"mxclone/pkg/dns"
 	"mxclone/pkg/smtp"
 	"mxclone/pkg/types"
+	"mxclone/pkg/validation"
 )
 
 // SMTPCmd represents the smtp command
@@ -24,8 +25,26 @@ var SMTPCmd = &cobra.Command{
 This checks connectivity, STARTTLS support, open relay status, and more.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Get and validate target (domain or IP)
 		target := args[0]
+		// Try to validate as IP first, then as domain if that fails
+		ipErr := validation.ValidateIP(target)
+		domainErr := validation.ValidateDomain(target)
+		if ipErr != nil && domainErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: Invalid domain or IP address\n")
+			os.Exit(1)
+		}
+
+		// Get and validate port if provided
 		port, _ := cmd.Flags().GetInt("port")
+		if port != 0 {
+			if err := validation.ValidatePort(port); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		// Get other command flags
 		timeout, _ := cmd.Flags().GetInt("timeout")
 		checkRelay, _ := cmd.Flags().GetBool("check-relay")
 		checkPTR, _ := cmd.Flags().GetBool("check-ptr")

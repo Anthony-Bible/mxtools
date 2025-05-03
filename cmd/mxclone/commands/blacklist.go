@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"mxclone/pkg/dnsbl"
+	"mxclone/pkg/validation"
 )
 
 // BlacklistCmd represents the blacklist command
@@ -21,7 +22,15 @@ var BlacklistCmd = &cobra.Command{
 This helps determine if an IP address has a poor reputation for sending spam or engaging in malicious activities.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Get and validate IP address
 		ip := args[0]
+		ip = validation.SanitizeIP(ip)
+		if err := validation.ValidateIP(ip); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Get command flags
 		all, _ := cmd.Flags().GetBool("all")
 		timeout, _ := cmd.Flags().GetInt("timeout")
 		checkHealth, _ := cmd.Flags().GetBool("check-health")

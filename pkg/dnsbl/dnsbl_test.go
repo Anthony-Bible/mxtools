@@ -2,7 +2,10 @@
 package dnsbl
 
 import (
+	"strings"
 	"testing"
+
+	"mxclone/pkg/types"
 )
 
 func TestReverseIP(t *testing.T) {
@@ -85,6 +88,253 @@ func TestBuildDNSBLQuery(t *testing.T) {
 			}
 			if got != tt.expected {
 				t.Errorf("BuildDNSBLQuery() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestAggregateBlacklistResults(t *testing.T) {
+	tests := []struct {
+		name    string
+		results []*types.BlacklistResult
+		want    *types.BlacklistResult
+	}{
+		{
+			name: "Empty results",
+			results: []*types.BlacklistResult{},
+			want: nil,
+		},
+		{
+			name: "Single result",
+			results: []*types.BlacklistResult{
+				{
+					CheckedIP: "192.168.1.1",
+					ListedOn: map[string]string{
+						"zen.spamhaus.org": "Listed for spam",
+					},
+					CheckError: "",
+				},
+			},
+			want: &types.BlacklistResult{
+				CheckedIP: "192.168.1.1",
+				ListedOn: map[string]string{
+					"zen.spamhaus.org": "Listed for spam",
+				},
+				CheckError: "",
+			},
+		},
+		{
+			name: "Multiple results for same IP",
+			results: []*types.BlacklistResult{
+				{
+					CheckedIP: "192.168.1.1",
+					ListedOn: map[string]string{
+						"zen.spamhaus.org": "Listed for spam",
+					},
+					CheckError: "",
+				},
+				{
+					CheckedIP: "192.168.1.1",
+					ListedOn: map[string]string{
+						"bl.spamcop.net": "Listed for abuse",
+					},
+					CheckError: "",
+				},
+			},
+			want: &types.BlacklistResult{
+				CheckedIP: "192.168.1.1",
+				ListedOn: map[string]string{
+					"zen.spamhaus.org": "Listed for spam",
+					"bl.spamcop.net":   "Listed for abuse",
+				},
+				CheckError: "",
+			},
+		},
+		{
+			name: "Multiple results for different IPs",
+			results: []*types.BlacklistResult{
+				{
+					CheckedIP: "192.168.1.1",
+					ListedOn: map[string]string{
+						"zen.spamhaus.org": "Listed for spam",
+					},
+					CheckError: "",
+				},
+				{
+					CheckedIP: "192.168.1.2",
+					ListedOn: map[string]string{
+						"bl.spamcop.net": "Listed for abuse",
+					},
+					CheckError: "",
+				},
+			},
+			want: &types.BlacklistResult{
+				CheckedIP: "192.168.1.1",
+				ListedOn: map[string]string{
+					"zen.spamhaus.org": "Listed for spam",
+				},
+				CheckError: "",
+			},
+		},
+		{
+			name: "Results with errors",
+			results: []*types.BlacklistResult{
+				{
+					CheckedIP:  "192.168.1.1",
+					ListedOn:   map[string]string{},
+					CheckError: "Error checking zen.spamhaus.org",
+				},
+				{
+					CheckedIP:  "192.168.1.1",
+					ListedOn:   map[string]string{},
+					CheckError: "Error checking bl.spamcop.net",
+				},
+			},
+			want: &types.BlacklistResult{
+				CheckedIP:  "192.168.1.1",
+				ListedOn:   map[string]string{},
+				CheckError: "Error checking zen.spamhaus.org; Error checking bl.spamcop.net",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := AggregateBlacklistResults(tt.results)
+
+			// Check if both are nil or both are not nil
+			if (got == nil) != (tt.want == nil) {
+				t.Errorf("AggregateBlacklistResults() = %v, want %v", got, tt.want)
+				return
+			}
+
+			// If both are nil, we're done
+			if got == nil && tt.want == nil {
+				return
+			}
+
+			// Check CheckedIP
+			if got.CheckedIP != tt.want.CheckedIP {
+				t.Errorf("AggregateBlacklistResults().CheckedIP = %v, want %v", got.CheckedIP, tt.want.CheckedIP)
+			}
+
+			// Check ListedOn
+			if len(got.ListedOn) != len(tt.want.ListedOn) {
+				t.Errorf("AggregateBlacklistResults().ListedOn has %d entries, want %d", len(got.ListedOn), len(tt.want.ListedOn))
+			}
+			for zone, reason := range tt.want.ListedOn {
+				if gotReason, ok := got.ListedOn[zone]; !ok {
+					t.Errorf("AggregateBlacklistResults().ListedOn missing zone %s", zone)
+				} else if gotReason != reason {
+					t.Errorf("AggregateBlacklistResults().ListedOn[%s] = %s, want %s", zone, gotReason, reason)
+				}
+			}
+
+			// Check CheckError
+			if got.CheckError != tt.want.CheckError {
+				t.Errorf("AggregateBlacklistResults().CheckError = %v, want %v", got.CheckError, tt.want.CheckError)
+			}
+		})
+	}
+}
+
+func TestGetBlacklistSummary(t *testing.T) {
+	tests := []struct {
+		name          string
+		result        *types.BlacklistResult
+		wantContains  []string
+		wantNotContains []string
+	}{
+		{
+			name:          "Nil result",
+			result:        nil,
+			wantContains:  []string{"No blacklist check results available"},
+			wantNotContains: []string{},
+		},
+		{
+			name: "Not listed on any blacklists",
+			result: &types.BlacklistResult{
+				CheckedIP: "192.168.1.1",
+				ListedOn:  map[string]string{},
+			},
+			wantContains:  []string{"IP 192.168.1.1 is not listed on any blacklists"},
+			wantNotContains: []string{"Errors:"},
+		},
+		{
+			name: "Listed on one blacklist with reason",
+			result: &types.BlacklistResult{
+				CheckedIP: "192.168.1.1",
+				ListedOn: map[string]string{
+					"zen.spamhaus.org": "Listed for spam",
+				},
+			},
+			wantContains:  []string{
+				"IP 192.168.1.1 is listed on 1 blacklists:",
+				"zen.spamhaus.org: Listed for spam",
+			},
+			wantNotContains: []string{"Errors:"},
+		},
+		{
+			name: "Listed on one blacklist without reason",
+			result: &types.BlacklistResult{
+				CheckedIP: "192.168.1.1",
+				ListedOn: map[string]string{
+					"zen.spamhaus.org": "",
+				},
+			},
+			wantContains:  []string{
+				"IP 192.168.1.1 is listed on 1 blacklists:",
+				"zen.spamhaus.org",
+			},
+			wantNotContains: []string{"Errors:"},
+		},
+		{
+			name: "Listed on multiple blacklists",
+			result: &types.BlacklistResult{
+				CheckedIP: "192.168.1.1",
+				ListedOn: map[string]string{
+					"zen.spamhaus.org": "Listed for spam",
+					"bl.spamcop.net":   "Listed for abuse",
+				},
+			},
+			wantContains:  []string{
+				"IP 192.168.1.1 is listed on 2 blacklists:",
+				"zen.spamhaus.org: Listed for spam",
+				"bl.spamcop.net: Listed for abuse",
+			},
+			wantNotContains: []string{"Errors:"},
+		},
+		{
+			name: "With error",
+			result: &types.BlacklistResult{
+				CheckedIP:  "192.168.1.1",
+				ListedOn:   map[string]string{},
+				CheckError: "Error checking blacklists",
+			},
+			wantContains:  []string{
+				"IP 192.168.1.1 is not listed on any blacklists",
+				"Errors: Error checking blacklists",
+			},
+			wantNotContains: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetBlacklistSummary(tt.result)
+
+			// Check that the output contains all the expected substrings
+			for _, want := range tt.wantContains {
+				if !strings.Contains(got, want) {
+					t.Errorf("GetBlacklistSummary() = %v, should contain %v", got, want)
+				}
+			}
+
+			// Check that the output does not contain any of the unwanted substrings
+			for _, notWant := range tt.wantNotContains {
+				if strings.Contains(got, notWant) {
+					t.Errorf("GetBlacklistSummary() = %v, should not contain %v", got, notWant)
+				}
 			}
 		})
 	}
