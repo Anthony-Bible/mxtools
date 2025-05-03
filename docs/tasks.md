@@ -30,12 +30,12 @@ Testing, documentation, and optimization
 **MILESTONE 1: Project foundation complete**
 
 ### DNS Lookups Implementation
-8. [ ] Implement basic DNS lookups using standard library (A, AAAA, MX, TXT, CNAME, NS, SOA, PTR) (1d)
-9. [ ] Implement advanced DNS lookups using miekg/dns library (2d)
-10. [ ] Add support for querying specific DNS servers (4h)
-11. [ ] Implement DNS record parsing and formatting (1d)
-12. [ ] Add error handling for various DNS response codes (4h)
-13. [ ] Implement DNS lookup timeout and retry mechanisms (4h)
+8. [x] Implement basic DNS lookups using standard library (A, AAAA, MX, TXT, CNAME, NS, SOA, PTR) (1d)
+9. [x] Implement advanced DNS lookups using miekg/dns library (2d)
+10. [x] Add support for querying specific DNS servers (4h)
+11. [x] Implement DNS record parsing and formatting (1d)
+12. [x] Add error handling for various DNS response codes (4h)
+13. [x] Implement DNS lookup timeout and retry mechanisms (4h)
 
 **MILESTONE 2: Basic DNS functionality complete**
 
