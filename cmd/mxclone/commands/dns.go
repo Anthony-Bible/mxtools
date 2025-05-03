@@ -90,6 +90,6 @@ func init() {
 	DnsCmd.Flags().StringP("server", "s", "", "DNS server to query (e.g., 8.8.8.8)")
 	DnsCmd.Flags().BoolP("advanced", "a", false, "Use advanced DNS lookup (miekg/dns)")
 	DnsCmd.Flags().BoolP("all", "l", false, "Lookup all record types")
-	DnsCmd.Flags().IntP("timeout", "o", 5, "Timeout in seconds")
+	DnsCmd.Flags().IntP("timeout", "T", 5, "Timeout in seconds")
 	DnsCmd.Flags().IntP("retries", "r", 2, "Number of retries")
 }
