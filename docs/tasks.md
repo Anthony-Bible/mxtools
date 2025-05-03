@@ -42,24 +42,24 @@ Testing, documentation, and optimization
 ## Phase 2: Core Features
 
 ### Blacklist (DNSBL) Checks Implementation
-14. [ ] Implement IP reversal function for DNSBL queries (2h)
-15. [ ] Create DNSBL query builder (4h)
-16. [ ] Implement single DNSBL check functionality (1d)
-17. [ ] Implement concurrent checks against multiple DNSBLs (1d)
-18. [ ] Add TXT record retrieval for blacklist explanations (4h)
-19. [ ] Implement DNSBL health checking (1d)
-20. [ ] Create result aggregation for multiple DNSBL checks (1d)
+14. [x] Implement IP reversal function for DNSBL queries (2h)
+15. [x] Create DNSBL query builder (4h)
+16. [x] Implement single DNSBL check functionality (1d)
+17. [x] Implement concurrent checks against multiple DNSBLs (1d)
+18. [x] Add TXT record retrieval for blacklist explanations (4h)
+19. [x] Implement DNSBL health checking (1d)
+20. [x] Create result aggregation for multiple DNSBL checks (1d)
 
 **MILESTONE 3: Blacklist checking functionality complete**
 
 ### SMTP Diagnostics Implementation
-21. [ ] Implement basic SMTP connection functionality (1d)
-22. [ ] Add STARTTLS support detection and negotiation (1d)
-23. [ ] Implement open relay testing (1d)
-24. [ ] Add response time measurement for SMTP operations (4h)
-25. [ ] Implement reverse DNS (PTR) verification for SMTP servers (4h)
-26. [ ] Add support for different SMTP ports (25, 465, 587) (4h)
-27. [ ] Implement proper TLS certificate validation (1d)
+21. [x] Implement basic SMTP connection functionality (1d)
+22. [x] Add STARTTLS support detection and negotiation (1d)
+23. [x] Implement open relay testing (1d)
+24. [x] Add response time measurement for SMTP operations (4h)
+25. [x] Implement reverse DNS (PTR) verification for SMTP servers (4h)
+26. [x] Add support for different SMTP ports (25, 465, 587) (4h)
+27. [x] Implement proper TLS certificate validation (1d)
 
 **MILESTONE 4: SMTP diagnostics functionality complete**
 
