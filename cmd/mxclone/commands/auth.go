@@ -38,10 +38,28 @@ This includes SPF, DKIM, and DMARC record retrieval and validation.`,
 		var result *types.AuthResult
 		var err error
 
-		// If DKIM check is requested and a selector is provided
-		if checkDKIM && selector != "" {
-			fmt.Printf("Checking email authentication with DKIM for selector %s...\n", selector)
-			result, err = emailauth.CheckEmailAuthWithDKIM(ctx, domain, selector, timeoutDuration)
+		// If DKIM check is requested
+		if checkDKIM {
+			// If a selector is provided, use it
+			if selector != "" {
+				fmt.Printf("Checking email authentication with DKIM for selector %s...\n", selector)
+				result, err = emailauth.CheckEmailAuthWithDKIM(ctx, domain, selector, timeoutDuration)
+			} else {
+				// Try with "mail" selector first
+				fmt.Printf("No selector provided, trying with default selector 'mail'...\n")
+				result, err = emailauth.CheckEmailAuthWithDKIM(ctx, domain, "mail", timeoutDuration)
+
+				// If "mail" selector doesn't work, try with "google" selector
+				if err != nil || result.DKIMError != "" {
+					fmt.Printf("Selector 'mail' not found, trying with 'google'...\n")
+					result, err = emailauth.CheckEmailAuthWithDKIM(ctx, domain, "google", timeoutDuration)
+
+					// If both selectors don't work, show an error message
+					if err != nil || result.DKIMError != "" {
+						fmt.Printf("Both default selectors 'mail' and 'google' failed. Please specify a selector using the -s flag.\n")
+					}
+				}
+			}
 		} else if headerFile != "" {
 			// If header file is provided
 			fmt.Printf("Checking email authentication and analyzing header from %s...\n", headerFile)
