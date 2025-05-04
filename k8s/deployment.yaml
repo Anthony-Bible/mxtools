@@ -14,16 +14,19 @@ spec:
       labels:
         app: mxclone
     spec:
+      imagePullSecrets:
+        - name: regcred 
       containers:
-      - name: mxclone
-        image: mxclone:latest # Update with your registry/image if needed
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8080
-        env:
-        - name: UI_DIST_PATH
-          value: /app/ui/dist
-        resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
+        - name: mxclone
+          image: ghcr.io/anthony-bible/mxclone:latest # Update with your registry/image if needed
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          command: ["./mxclone", "api"]
+          env:
+            - name: UI_DIST_PATH
+              value: /app/ui/dist
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"

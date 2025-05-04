@@ -63,6 +63,8 @@ func init() {
 	// Add subcommands
 	rootCmd.AddCommand(DnsCmd)
 	rootCmd.AddCommand(BlacklistCmd)
+	// Add the API server command
+	rootCmd.AddCommand(ApiCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.

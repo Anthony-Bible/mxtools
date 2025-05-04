@@ -20,4 +20,4 @@ COPY --from=ui-builder /ui/dist ./ui/dist
 COPY ui/public ./ui/public
 EXPOSE 8080
 ENV UI_DIST_PATH=/app/ui/dist
-CMD ["./mxclone"]
+CMD ["./mxclone", "api"]
