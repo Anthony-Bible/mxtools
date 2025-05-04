@@ -49,19 +49,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.REGISTRY_TOKEN }}
 
-      # - name: Push Docker image
+      - name: Push Docker image
+        run: |
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
+      # - name: Install yq
       #   run: |
-      #     docker push $REGISTRY/$IMAGE_NAME:latest
+      #     sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+      #     sudo chmod +x /usr/local/bin/yq
 
-      - name: Install yq
-        run: |
-          sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+      # - name: Inject image into Kubernetes manifest
+      #   run: |
+      #     yq e '.spec.template.spec.containers[0].image = env(REGISTRY) + "/" + env(IMAGE_NAME) + ":latest"' k8s/deployment.yaml > k8s/deployment.generated.yaml
 
-      - name: Inject image into Kubernetes manifest
-        run: |
-          yq e '.spec.template.spec.containers[0].image = env(REGISTRY) + "/" + env(IMAGE_NAME) + ":latest"' k8s/deployment.yaml > k8s/deployment.generated.yaml
-
-      - name: Output updated manifest
-        run: |
-          cat k8s/deployment.generated.yaml
+      # - name: Output updated manifest
+      #   run: |
+      #     cat k8s/deployment.generated.yaml
