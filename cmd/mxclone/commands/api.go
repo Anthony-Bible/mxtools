@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/spf13/cobra"
 	"mxclone/internal/api"
+
+	"github.com/spf13/cobra"
 )
 
 // ApiCmd starts the API server

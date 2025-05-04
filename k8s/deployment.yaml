@@ -19,7 +19,7 @@ spec:
       containers:
         - name: mxclone
           image: ghcr.io/anthony-bible/mxclone:latest # Update with your registry/image if needed
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           command: ["./mxclone", "api"]

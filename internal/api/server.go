@@ -13,6 +13,8 @@ import (
 	"mxclone/pkg/validation"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -49,6 +51,31 @@ func rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func StartAPIServer() {
+	// Serve static UI files
+	uiDist := os.Getenv("UI_DIST_PATH")
+	if uiDist == "" {
+		uiDist = "./ui/dist"
+	}
+	fs := http.FileServer(http.Dir(uiDist))
+
+	// Serve index.html for non-API, non-file routes (for React Router)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || !isAPIPath(r.URL.Path) {
+			// If the file exists, serve it; otherwise, serve index.html
+			filePath := filepath.Join(uiDist, r.URL.Path)
+			if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+				fs.ServeHTTP(w, r)
+				return
+			}
+			// Serve index.html for client-side routing
+			http.ServeFile(w, r, filepath.Join(uiDist, "index.html"))
+			return
+		}
+		// Fallback to API handlers
+		defaultMux := http.DefaultServeMux
+		defaultMux.ServeHTTP(w, r)
+	})
+
 	http.HandleFunc("/api/health", rateLimitMiddleware(healthHandler))
 	http.HandleFunc("/api/dns", rateLimitMiddleware(dnsHandler))
 	http.HandleFunc("/api/blacklist", rateLimitMiddleware(blacklistHandler))
@@ -58,10 +85,14 @@ func StartAPIServer() {
 	http.HandleFunc("/api/network/traceroute", rateLimitMiddleware(tracerouteHandler))
 	http.HandleFunc("/api/network/whois", rateLimitMiddleware(whoisHandler))
 
-	log.Println("[api] Starting server on :8080")
+	log.Println("[api] Starting server on :8080, serving UI from", uiDist)
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("[api] Server failed: %v", err)
 	}
+}
+
+func isAPIPath(path string) bool {
+	return len(path) >= 5 && path[:5] == "/api/"
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
