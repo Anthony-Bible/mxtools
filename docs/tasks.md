@@ -14,6 +14,9 @@ Combining components and creating comprehensive checks
 ## Phase 4: Finalization (Weeks 9-10)
 Testing, documentation, and optimization
 
+## Phase 5: Web UI Implementation (Weeks 11-12)
+Design and implementation of user interface
+
 # Tasks with Time Estimates
 
 ## Phase 1: Foundation
@@ -116,16 +119,29 @@ Testing, documentation, and optimization
 **MILESTONE 9: Security and performance optimizations complete**
 
 ### Web API Implementation
-56. [ ] Design API endpoints for core features (diagnostics, health, DNS, blacklist, SMTP, auth, network tools) (1d)
-57. [ ] Set up HTTP server using net/http (1d)
-58. [ ] Implement request routing and handler structure (1d)
-59. [ ] Add JSON request/response models and validation (1d)
-60. [ ] Integrate core engine/orchestrator with API handlers (2d)
-61. [ ] Implement error handling and logging for API (1d)
-62. [ ] Add rate limiting and input sanitization for API endpoints (1d)
-63. [ ] Write unit and integration tests for API endpoints (2d)
-64. [ ] Document API usage and provide examples (1d)
+56. [x] Design API endpoints for core features (diagnostics, health, DNS, blacklist, SMTP, auth, network tools) (1d)
+57. [x] Set up HTTP server using net/http (1d)
+58. [x] Implement request routing and handler structure (1d)
+59. [x] Add JSON request/response models and validation (1d)
+60. [x] Integrate core engine/orchestrator with API handlers (2d)
+61. [x] Implement error handling and logging for API (1d)
+62. [x] Add rate limiting and input sanitization for API endpoints (1d)
+63. [x] Write unit and integration tests for API endpoints (2d)
+64. [x] Document API usage and provide examples (1d)
 
 **MILESTONE 10: Web API implementation complete**
+
+### Web UI Implementation
+65. [x] Design UI/UX for core diagnostics and results display (2d)
+66. [x] Set up frontend project (e.g., React, Vite, or similar) (1d)
+67. [x] Implement API integration for diagnostics (DNS, blacklist, SMTP, auth, network tools) (2d)
+68. [x] Create components for input forms and result views (2d)
+69. [x] Add error handling, loading states, and user feedback (1d)
+70. [x] Implement authentication and rate limit feedback (optional) (1d)
+71. [x] Write end-to-end and UI tests (2d)
+72. [x] Document UI usage and deployment (1d)
+73. [x] Add input form to DNS diagnostics page for checking IP addresses/domains (1h)
+
+**MILESTONE 11: Web UI implementation complete**
 
 **FINAL MILESTONE: MXToolbox Clone v1.0 Ready for Deployment**

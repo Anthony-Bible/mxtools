@@ -65,6 +65,60 @@ Based on the project structure, the main commands likely include:
 
 Use `.<command> --help` for specific command usage (e.g., `./mxclone dns --help`).
 
+## API Usage
+
+The API server runs on port 8080 by default. All endpoints accept POST requests with a JSON body:
+
+Example request to `/api/dns`:
+
+```
+curl -X POST http://localhost:8080/api/dns -H 'Content-Type: application/json' -d '{"target": "example.com"}'
+```
+
+All endpoints accept a JSON body with at least a `target` field. Example endpoints:
+- `/api/dns` — DNS diagnostics
+- `/api/blacklist` — Blacklist checks
+- `/api/smtp` — SMTP diagnostics
+- `/api/auth` — Email authentication
+- `/api/network/ping` — ICMP ping
+- `/api/network/traceroute` — Traceroute
+- `/api/network/whois` — WHOIS lookup
+
+Responses are JSON objects with diagnostic results or error messages.
+
+Rate limiting: Each client IP is limited to 10 requests per minute.
+
+## Running the Web UI
+
+The Web UI is located in the `ui/` directory and provides a modern frontend for diagnostics via your browser.
+
+### Prerequisites
+- Node.js (v18 or later)
+
+### Steps
+1. Navigate to the `ui/` directory:
+   ```bash
+   cd ui
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. Open your browser and go to [http://localhost:5173](http://localhost:5173)
+
+The Web UI will connect to the backend API (by default at `http://localhost:8080/api`). Ensure the API server is running for full functionality.
+
+### Building for Production
+To build the Web UI for production deployment:
+```bash
+npm run build
+```
+The static files will be output to the `ui/dist/` directory. Serve these with your preferred static file server or integrate with your backend.
+
 ## Configuration
 
 (Optional: Add details about configuration file locations or environment variables if applicable, potentially managed via `internal/config`).
