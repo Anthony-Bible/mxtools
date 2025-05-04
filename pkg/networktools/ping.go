@@ -211,10 +211,6 @@ func Ping(ctx context.Context, target string, count int, timeout time.Duration) 
 // PingWithPrivilegeCheck performs a ping operation and handles privilege requirements.
 func PingWithPrivilegeCheck(ctx context.Context, target string, count int, timeout time.Duration) (*PingResult, error) {
 	result, err := Ping(ctx, target, count, timeout)
-	if err != nil && !result.IsPrivileged {
-		// If the ping failed and we're not privileged, return a more helpful error
-		result.Error = fmt.Sprintf("Ping requires elevated privileges. Try running as root or with sudo. Error: %s", result.Error)
-	}
 	return result, err
 }
 
@@ -228,9 +224,6 @@ func FormatPingResult(result *PingResult) string {
 	output += fmt.Sprintf("Sent: %d, Received: %d, Packet Loss: %.1f%%\n", result.Sent, result.Received, result.PacketLoss)
 	if result.Received > 0 {
 		output += fmt.Sprintf("Round-trip min/avg/max: %s/%s/%s\n", result.MinRTT, result.AvgRTT, result.MaxRTT)
-	}
-	if !result.IsPrivileged {
-		output += "Note: Running in unprivileged mode. For better results, run with elevated privileges.\n"
 	}
 	return output
 }

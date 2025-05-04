@@ -273,9 +273,5 @@ func FormatTracerouteResult(result *TracerouteResult) string {
 			}
 		}
 	}
-
-	if !result.IsPrivileged {
-		output += "Note: Running in unprivileged mode. For better results, run with elevated privileges.\n"
-	}
 	return output
 }

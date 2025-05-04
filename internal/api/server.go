@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"mxclone/pkg/dns"
@@ -265,6 +266,29 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if result != nil {
+		type pingResultWithMs struct {
+			Target     string  `json:"target"`
+			Sent       int     `json:"sent"`
+			Received   int     `json:"received"`
+			PacketLoss float64 `json:"packetLoss"`
+			MinRTT     string  `json:"minRttMs"`
+			MaxRTT     string  `json:"maxRttMs"`
+			AvgRTT     string  `json:"avgRttMs"`
+			Error      string  `json:"error,omitempty"`
+		}
+		json.NewEncoder(w).Encode(pingResultWithMs{
+			Target:     result.Target,
+			Sent:       result.Sent,
+			Received:   result.Received,
+			PacketLoss: result.PacketLoss,
+			MinRTT:     fmt.Sprintf("%.3fms", float64(result.MinRTT)/float64(time.Millisecond)),
+			MaxRTT:     fmt.Sprintf("%.3fms", float64(result.MaxRTT)/float64(time.Millisecond)),
+			AvgRTT:     fmt.Sprintf("%.3fms", float64(result.AvgRTT)/float64(time.Millisecond)),
+			Error:      result.Error,
+		})
+		return
+	}
 	json.NewEncoder(w).Encode(result)
 }
 

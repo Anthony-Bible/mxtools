@@ -54,7 +54,28 @@ var PingCmd = &cobra.Command{
 
 		// Output the result
 		if outputFormat == "json" {
-			jsonOutput, err := json.MarshalIndent(result, "", "  ")
+			// Convert durations to string with ms suffix for JSON output
+			type pingResultWithMs struct {
+				Target     string  `json:"target"`
+				Sent       int     `json:"sent"`
+				Received   int     `json:"received"`
+				PacketLoss float64 `json:"packetLoss"`
+				MinRTT     string  `json:"minRttMs"`
+				MaxRTT     string  `json:"maxRttMs"`
+				AvgRTT     string  `json:"avgRttMs"`
+				Error      string  `json:"error,omitempty"`
+			}
+			pr := pingResultWithMs{
+				Target:     result.Target,
+				Sent:       result.Sent,
+				Received:   result.Received,
+				PacketLoss: result.PacketLoss,
+				MinRTT:     fmt.Sprintf("%.3fms", float64(result.MinRTT)/float64(time.Millisecond)),
+				MaxRTT:     fmt.Sprintf("%.3fms", float64(result.MaxRTT)/float64(time.Millisecond)),
+				AvgRTT:     fmt.Sprintf("%.3fms", float64(result.AvgRTT)/float64(time.Millisecond)),
+				Error:      result.Error,
+			}
+			jsonOutput, err := json.MarshalIndent(pr, "", "  ")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
 				os.Exit(1)
