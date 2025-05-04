@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mxclone
+  labels:
+    app: mxclone
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mxclone
+  template:
+    metadata:
+      labels:
+        app: mxclone
+    spec:
+      containers:
+      - name: mxclone
+        image: mxclone:latest # Update with your registry/image if needed
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        - name: UI_DIST_PATH
+          value: /app/ui/dist
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"

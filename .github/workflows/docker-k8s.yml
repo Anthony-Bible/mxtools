@@ -1,0 +1,67 @@
+# GitHub Actions workflow to build Go backend, React UI, and Docker image for Kubernetes
+name: Build & Dockerize for Kubernetes
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}
+      IMAGE_NAME: mxclone
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Go backend
+        run: |
+          go mod download
+          go build -o bin/mxclone main.go
+
+      - name: Build React UI
+        working-directory: ./ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build Docker image
+        run: |
+          docker build -t $REGISTRY/$IMAGE_NAME:latest .
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Push Docker image
+      #   run: |
+      #     docker push $REGISTRY/$IMAGE_NAME:latest
+
+      - name: Install yq
+        run: |
+          sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Inject image into Kubernetes manifest
+        run: |
+          yq e '.spec.template.spec.containers[0].image = env(REGISTRY) + "/" + env(IMAGE_NAME) + ":latest"' k8s/deployment.yaml > k8s/deployment.generated.yaml
+
+      - name: Output updated manifest
+        run: |
+          cat k8s/deployment.generated.yaml

@@ -1,0 +1,10 @@
+# Ignore build/test/dev files for Docker context
+ui/node_modules
+ui/dist
+*.log
+.git
+.gitignore
+memory-bank/
+docs/
+**/*.test.*
+ui/cypress/

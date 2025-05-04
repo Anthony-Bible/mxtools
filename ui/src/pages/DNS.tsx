@@ -6,13 +6,11 @@ import ErrorAlert from '../components/ErrorAlert';
 import { runDiagnostic } from '../api/diagnostics';
 
 const DNS: React.FC = () => {
-  const [target, setInput] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (value: string) => {
-    setInput(value);
     setLoading(true);
     setError(null);
     setResult(null);

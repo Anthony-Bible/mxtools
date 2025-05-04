@@ -17,6 +17,12 @@ Testing, documentation, and optimization
 ## Phase 5: Web UI Implementation (Weeks 11-12)
 Design and implementation of user interface
 
+## Phase 6: Web UI Styling (Weeks 13-14)
+Styling and responsiveness improvements
+
+## Phase 7: End-to-End Testing (Weeks 15)
+Comprehensive testing of workflows and user interactions
+
 # Tasks with Time Estimates
 
 ## Phase 1: Foundation
@@ -143,5 +149,20 @@ Design and implementation of user interface
 73. [x] Add input form to DNS diagnostics page for checking IP addresses/domains (1h)
 
 **MILESTONE 11: Web UI implementation complete**
+
+### Web UI Styling
+74. [x] Design and implement a consistent, modern style for the Web UI (2d)
+75. [x] Add responsive layout and accessibility improvements (1d)
+76. [x] Polish component appearance and add visual feedback (1d)
+
+**MILESTONE 12: Web UI styling complete**
+
+### End-to-End Testing
+77. [x] Set up Cypress or similar E2E testing framework (if not already done by task 71) (4h)
+78. [x] Write E2E tests for core diagnostic workflows (DNS, Blacklist, SMTP, Auth, Network) (2d)
+79. [x] Test user interactions, form submissions, and result displays (1d)
+80. [x] Ensure E2E tests cover different browsers/environments if applicable (1d)
+
+**MILESTONE 13: End-to-End testing complete**
 
 **FINAL MILESTONE: MXToolbox Clone v1.0 Ready for Deployment**
