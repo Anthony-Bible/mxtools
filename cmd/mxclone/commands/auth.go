@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"mxclone/pkg/emailauth"
-	"mxclone/pkg/types"
 	"mxclone/pkg/validation"
 )
 
@@ -46,60 +44,32 @@ This includes SPF, DKIM, and DMARC record retrieval and validation.`,
 			}
 		}
 
-		// Get and validate header file if provided
-		headerFile, _ := cmd.Flags().GetString("header-file")
-		if headerFile != "" {
-			if err := validation.ValidateFile(headerFile); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-		}
-
 		fmt.Printf("Checking email authentication for %s...\n", domain)
 
 		ctx := context.Background()
 		timeoutDuration := time.Duration(timeout) * time.Second
 
-		// Determine which check to perform based on flags
-		var result *types.AuthResult
-		var err error
+		// Get the EmailAuth service from the dependency injection container
+		emailAuthService := Container.GetEmailAuthService()
+
+		// Define DKIM selectors to check
+		dkimSelectors := []string{}
 
 		// If DKIM check is requested
 		if checkDKIM {
 			// If a selector is provided, use it
 			if selector != "" {
 				fmt.Printf("Checking email authentication with DKIM for selector %s...\n", selector)
-				result, err = emailauth.CheckEmailAuthWithDKIM(ctx, domain, selector, timeoutDuration)
+				dkimSelectors = []string{selector}
 			} else {
-				// Try with "mail" selector first
-				fmt.Printf("No selector provided, trying with default selector 'mail'...\n")
-				result, err = emailauth.CheckEmailAuthWithDKIM(ctx, domain, "mail", timeoutDuration)
-
-				// If "mail" selector doesn't work, try with "google" selector
-				if err != nil || result.DKIMError != "" {
-					fmt.Printf("Selector 'mail' not found, trying with 'google'...\n")
-					result, err = emailauth.CheckEmailAuthWithDKIM(ctx, domain, "google", timeoutDuration)
-
-					// If both selectors don't work, show an error message
-					if err != nil || result.DKIMError != "" {
-						fmt.Printf("Both default selectors 'mail' and 'google' failed. Please specify a selector using the -s flag.\n")
-					}
-				}
+				// Try with common selectors
+				fmt.Printf("No selector provided, trying with default selectors...\n")
+				dkimSelectors = []string{"mail", "default", "google", "selector1", "dkim"}
 			}
-		} else if headerFile != "" {
-			// If header file is provided
-			fmt.Printf("Checking email authentication and analyzing header from %s...\n", headerFile)
-			headerData, err := os.ReadFile(headerFile)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error reading header file: %v\n", err)
-				os.Exit(1)
-			}
-			result, err = emailauth.CheckEmailAuthWithHeader(ctx, domain, string(headerData), timeoutDuration)
-		} else {
-			// Basic email authentication check
-			result, err = emailauth.CheckEmailAuth(ctx, domain, timeoutDuration)
 		}
 
+		// Perform the check
+		result, err := emailAuthService.CheckAll(ctx, domain, dkimSelectors, timeoutDuration)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error checking email authentication: %v\n", err)
 			os.Exit(1)
@@ -114,51 +84,9 @@ This includes SPF, DKIM, and DMARC record retrieval and validation.`,
 			}
 			fmt.Println(string(jsonOutput))
 		} else {
-			// Text output
-			fmt.Printf("\nEmail authentication results for %s:\n", domain)
-
-			// SPF results
-			fmt.Println("\nSPF:")
-			if result.SPFRecord != "" {
-				fmt.Printf("  Record: %s\n", result.SPFRecord)
-				if result.SPFResult != "" {
-					fmt.Printf("  Result: %s\n", result.SPFResult)
-				}
-			} else {
-				fmt.Printf("  Error: %s\n", result.SPFError)
-			}
-
-			// DMARC results
-			fmt.Println("\nDMARC:")
-			if result.DMARCRecord != "" {
-				fmt.Printf("  Record: %s\n", result.DMARCRecord)
-				if result.DMARCPolicy != "" {
-					fmt.Printf("  Policy: %s\n", result.DMARCPolicy)
-				}
-			} else {
-				fmt.Printf("  Error: %s\n", result.DMARCError)
-			}
-
-			// DKIM results (if available)
-			if result.DKIMRecord != "" || result.DKIMError != "" {
-				fmt.Println("\nDKIM:")
-				if result.DKIMRecord != "" {
-					fmt.Printf("  Record: %s\n", result.DKIMRecord)
-					if result.DKIMResult != "" {
-						fmt.Printf("  Result: %s\n", result.DKIMResult)
-					}
-				} else {
-					fmt.Printf("  Error: %s\n", result.DKIMError)
-				}
-			}
-
-			// Header authentication results (if available)
-			if result.HeaderAuth != nil && len(result.HeaderAuth) > 0 {
-				fmt.Println("\nEmail Header Authentication:")
-				for mechanism, value := range result.HeaderAuth {
-					fmt.Printf("  %s: %s\n", mechanism, value)
-				}
-			}
+			// Text output - use the formatted summary from the service
+			summary := emailAuthService.GetAuthSummary(result)
+			fmt.Println(summary)
 		}
 	},
 }
@@ -167,7 +95,6 @@ func init() {
 	AuthCmd.Flags().IntP("timeout", "t", 10, "Timeout in seconds for DNS operations")
 	AuthCmd.Flags().StringP("selector", "s", "", "DKIM selector to check")
 	AuthCmd.Flags().BoolP("check-dkim", "d", false, "Check DKIM record (requires selector)")
-	AuthCmd.Flags().StringP("header-file", "f", "", "File containing email headers to analyze")
 
 	// Add the command to the root command
 	rootCmd.AddCommand(AuthCmd)

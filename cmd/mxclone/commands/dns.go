@@ -10,8 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"mxclone/pkg/dns"
-	"mxclone/pkg/types"
+	"mxclone/domain/dns"
 	"mxclone/pkg/validation"
 )
 
@@ -32,21 +31,20 @@ Supports various record types including A, AAAA, MX, TXT, CNAME, NS, SOA, PTR.`,
 		}
 
 		// Get command flags
-		advanced, _ := cmd.Flags().GetBool("advanced")
 		all, _ := cmd.Flags().GetBool("all")
 		timeout, _ := cmd.Flags().GetInt("timeout")
-		retries, _ := cmd.Flags().GetInt("retries")
 		outputFormat, _ := cmd.Flags().GetString("output")
 
 		// Get and validate record type
-		recordType, _ := cmd.Flags().GetString("type")
-		recordType = validation.SanitizeDNSRecordType(recordType)
+		recordTypeStr, _ := cmd.Flags().GetString("type")
+		recordTypeStr = validation.SanitizeDNSRecordType(recordTypeStr)
 		if !all {
-			if err := validation.ValidateDNSRecordType(recordType); err != nil {
+			if err := validation.ValidateDNSRecordType(recordTypeStr); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
 		}
+		recordType := dns.RecordType(recordTypeStr)
 
 		// Get and validate server if provided
 		server, _ := cmd.Flags().GetString("server")
@@ -59,27 +57,23 @@ Supports various record types including A, AAAA, MX, TXT, CNAME, NS, SOA, PTR.`,
 
 		fmt.Printf("Performing DNS lookup for %s (type: %s)...\n", domain, recordType)
 
+		// Get the DNS service from the dependency injection container
+		dnsService := Container.GetDNSService()
+
 		ctx := context.Background()
-		var result *types.DNSResult
+		var result *dns.DNSResult
 		var err error
 
 		// Set timeout duration
-		timeoutDuration := time.Duration(timeout) * time.Second
+		timeoutCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		defer cancel()
 
 		if all {
 			// Lookup all record types
-			if advanced {
-				result, err = dns.AdvancedLookupAll(ctx, domain, server)
-			} else {
-				result, err = dns.LookupAll(ctx, domain)
-			}
+			result, err = dnsService.LookupAll(timeoutCtx, domain)
 		} else {
 			// Lookup specific record type
-			if advanced {
-				result, err = dns.AdvancedLookupWithRetry(ctx, domain, recordType, server, retries, timeoutDuration)
-			} else {
-				result, err = dns.LookupWithRetry(ctx, domain, recordType, retries, timeoutDuration)
-			}
+			result, err = dnsService.Lookup(timeoutCtx, domain, recordType)
 		}
 
 		if err != nil {

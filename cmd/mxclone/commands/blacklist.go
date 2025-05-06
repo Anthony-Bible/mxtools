@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"mxclone/pkg/dnsbl"
 	"mxclone/pkg/validation"
 )
 
@@ -44,7 +43,6 @@ This helps determine if an IP address has a poor reputation for sending spam or 
 		// Get the list of blacklist zones to check
 		// Default blacklist zones
 		defaultZones := []string{
-			//"zen.spamhaus.org",
 			"bl.spamcop.net",
 			"dnsbl.sorbs.net",
 		}
@@ -62,10 +60,13 @@ This helps determine if an IP address has a poor reputation for sending spam or 
 			zones = defaultZones[:maxZones]
 		}
 
+		 // Get the DNSBL service from the dependency injection container
+		dnsblService := Container.GetDNSBLService()
+
 		// Check if we should check the health of the blacklists first
 		if checkHealth {
 			fmt.Println("Checking health of blacklist servers...")
-			healthStatus := dnsbl.CheckMultipleDNSBLHealth(ctx, zones, timeoutDuration)
+			healthStatus := dnsblService.CheckMultipleDNSBLHealth(ctx, zones, timeoutDuration)
 
 			// Filter out unhealthy zones
 			var healthyZones []string
@@ -80,7 +81,11 @@ This helps determine if an IP address has a poor reputation for sending spam or 
 		}
 
 		// Check the IP against the blacklists
-		result := dnsbl.CheckMultipleBlacklists(ctx, ip, zones, timeoutDuration)
+		result, err := dnsblService.CheckMultipleBlacklists(ctx, ip, zones, timeoutDuration)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error checking blacklists: %v\n", err)
+			os.Exit(1)
+		}
 
 		// Output the result
 		if outputFormat == "json" {
@@ -92,7 +97,7 @@ This helps determine if an IP address has a poor reputation for sending spam or 
 			fmt.Println(string(jsonOutput))
 		} else {
 			// Text output
-			summary := dnsbl.GetBlacklistSummary(result)
+			summary := dnsblService.GetBlacklistSummary(result)
 			fmt.Println(summary)
 		}
 	},
