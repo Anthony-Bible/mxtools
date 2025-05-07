@@ -31,7 +31,6 @@ This checks connectivity, STARTTLS support, and other SMTP capabilities.`,
 
 		// Get command flags
 		timeout, _ := cmd.Flags().GetInt("timeout")
-		port, _ := cmd.Flags().GetInt("port")
 		outputFormat, _ := cmd.Flags().GetString("output")
 
 		fmt.Printf("Performing SMTP diagnostics for %s...\n", domain)
@@ -39,7 +38,7 @@ This checks connectivity, STARTTLS support, and other SMTP capabilities.`,
 		ctx := context.Background()
 		timeoutDuration := time.Duration(timeout) * time.Second
 
-		 // Get the SMTP service from the dependency injection container
+		// Get the SMTP service from the dependency injection container
 		smtpService := Container.GetSMTPService()
 
 		// Perform the SMTP check

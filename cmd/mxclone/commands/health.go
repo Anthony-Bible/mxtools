@@ -46,7 +46,7 @@ to provide an overall assessment of the domain's health.`,
 		ctx := context.Background()
 		timeoutDuration := time.Duration(timeout) * time.Second
 
-		 // Get services from the dependency injection container
+		// Get services from the dependency injection container
 		dnsService := Container.GetDNSService()
 		dnsblService := Container.GetDNSBLService()
 		smtpService := Container.GetSMTPService()
@@ -82,14 +82,14 @@ to provide an overall assessment of the domain's health.`,
 			go func() {
 				fmt.Println("Performing blacklist checks...")
 				// First, get the IP addresses for the domain
-				dnsResult, err := dnsService.Lookup(ctx, domain, dns.RecordTypeA)
-				if err != nil || len(dnsResult.Lookups["A"]) == 0 {
+				dnsResult, err := dnsService.Lookup(ctx, domain, dns.TypeA)
+				if err != nil || len(dnsResult.Lookups[string(dns.TypeA)]) == 0 {
 					resultsCh <- result{name: "blacklist", val: nil, err: fmt.Errorf("failed to resolve domain to IP: %v", err)}
 					return
 				}
 
 				// Use the first IP address for blacklist check
-				ip := dnsResult.Lookups["A"][0]
+				ip := dnsResult.Lookups[string(dns.TypeA)][0]
 
 				// Default blacklist zones
 				zones := []string{
@@ -109,14 +109,14 @@ to provide an overall assessment of the domain's health.`,
 			go func() {
 				fmt.Println("Performing SMTP checks...")
 				// First, get MX records for the domain
-				mxResult, err := dnsService.Lookup(ctx, domain, dns.RecordTypeMX)
-				if err != nil || len(mxResult.Lookups["MX"]) == 0 {
+				mxResult, err := dnsService.Lookup(ctx, domain, dns.TypeMX)
+				if err != nil || len(mxResult.Lookups[string(dns.TypeMX)]) == 0 {
 					resultsCh <- result{name: "smtp", val: nil, err: fmt.Errorf("failed to get MX records: %v", err)}
 					return
 				}
 
 				// Extract the hostname from the first MX record
-				mxRecord := mxResult.Lookups["MX"][0]
+				mxRecord := mxResult.Lookups[string(dns.TypeMX)][0]
 				hostname := mxRecord
 				if idx := strings.Index(mxRecord, " (priority:"); idx > 0 {
 					hostname = mxRecord[:idx]
@@ -146,7 +146,12 @@ to provide an overall assessment of the domain's health.`,
 				if res.err != nil {
 					fmt.Fprintf(os.Stderr, "Error performing DNS check: %v\n", res.err)
 				} else if dnsRes, ok := res.val.(*dns.DNSResult); ok {
-					report.DNS = dnsRes
+					// Convert domain.DNSResult to types.DNSResult
+					typeDNSResult := &types.DNSResult{
+						Lookups: dnsRes.Lookups,
+						Error:   dnsRes.Error,
+					}
+					report.DNS = typeDNSResult
 				}
 			case "blacklist":
 				if res.err != nil {

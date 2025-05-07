@@ -21,6 +21,9 @@ type NetworkToolsPort interface {
 	// ExecuteNetworkTool is a generic method that executes a network diagnostic tool
 	ExecuteNetworkTool(ctx context.Context, toolType networktools.ToolType, target string, options map[string]interface{}) (*networktools.NetworkToolResult, error)
 
+	// WrapResult wraps individual tool results into a generic NetworkToolResult
+	WrapResult(toolType networktools.ToolType, pingResult *networktools.PingResult, tracerouteResult *networktools.TracerouteResult, whoisResult *networktools.WHOISResult, err error) *networktools.NetworkToolResult
+
 	// FormatToolResult returns a human-readable summary of a network tool result
 	FormatToolResult(result *networktools.NetworkToolResult) string
 }

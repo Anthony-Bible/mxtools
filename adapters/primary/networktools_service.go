@@ -117,6 +117,11 @@ func (a *NetworkToolsAdapter) ExecuteNetworkTool(ctx context.Context, toolType n
 	return result, err
 }
 
+// WrapResult wraps individual tool results into a generic NetworkToolResult
+func (a *NetworkToolsAdapter) WrapResult(toolType networktools.ToolType, pingResult *networktools.PingResult, tracerouteResult *networktools.TracerouteResult, whoisResult *networktools.WHOISResult, err error) *networktools.NetworkToolResult {
+	return a.service.WrapResult(toolType, pingResult, tracerouteResult, whoisResult, err)
+}
+
 // FormatToolResult returns a human-readable summary of a network tool result
 func (a *NetworkToolsAdapter) FormatToolResult(result *networktools.NetworkToolResult) string {
 	return a.service.FormatNetworkToolSummary(result)

@@ -60,7 +60,7 @@ This helps determine if an IP address has a poor reputation for sending spam or 
 			zones = defaultZones[:maxZones]
 		}
 
-		 // Get the DNSBL service from the dependency injection container
+		// Get the DNSBL service from the dependency injection container
 		dnsblService := Container.GetDNSBLService()
 
 		// Check if we should check the health of the blacklists first
