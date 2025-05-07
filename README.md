@@ -20,10 +20,15 @@
 
 *   **Language:** Go
 *   **CLI Framework:** [Cobra](https://github.com/spf13/cobra)
-*   **Structure:** Follows standard Go project layout (`cmd`, `internal`, `pkg`).
+*   **Architecture Pattern:** Hexagonal Architecture (ports and adapters)
+    * `domain`: Core business logic and domain models
+    * `ports`: Interfaces defining input and output boundaries
+    * `adapters`: Implementations of the interfaces (primary and secondary)
+*   **Structure:** Follows standard Go project layout.
     *   `cmd/mxclone`: Main application entry point and command definitions.
-    *   `internal`: Internal application logic (caching, configuration).
+    *   `internal`: Internal application logic (caching, configuration, API).
     *   `pkg`: Reusable packages for core functionalities (DNS, SMTP, Network Tools, etc.).
+    *   `ui`: React TypeScript web interface for browser-based diagnostics.
 
 ## Prerequisites
 
@@ -121,12 +126,102 @@ The static files will be output to the `ui/dist/` directory. Serve these with yo
 
 ## Configuration
 
-(Optional: Add details about configuration file locations or environment variables if applicable, potentially managed via `internal/config`).
+The application uses [Viper](https://github.com/spf13/viper) for configuration management. Configuration can be provided through:
+
+1. Configuration file (`config.yaml) in one of the following locations:
+   - Current working directory
+   - `$HOME/.mxclone/`
+   - `/etc/mxclone/`
+
+2. Environment variables:
+   - All configuration options can be set with environment variables prefixed with `MXCLONE_`
+   - Example: `MXCLONE_DNS_TIMEOUT=5s`
+
+### Core Configuration Options
+
+```yaml
+# General settings
+worker_count: 10          # Number of worker goroutines for concurrent operations
+log_level: "info"         # Logging level (debug, info, warn, error)
+cache_dir: "/tmp/mxclone" # Directory to store cache files
+
+# DNS settings
+dns_timeout: 5            # DNS query timeout in seconds
+dns_retries: 2            # Number of retries for failed DNS queries
+dns_resolvers:            # Custom DNS resolvers to use
+  - "8.8.8.8:53"
+  - "1.1.1.1:53"
+dns_cache_ttl: 300        # DNS cache TTL in seconds (5 minutes)
+
+# Blacklist settings
+blacklist_zones:          # DNSBL providers to check
+  - "zen.spamhaus.org"
+  - "bl.spamcop.net"
+  - "dnsbl.sorbs.net"
+blacklist_timeout: 10     # Blacklist query timeout in seconds
+blacklist_cache_ttl: 1800 # Blacklist cache TTL in seconds (30 minutes)
+
+# SMTP settings
+smtp_timeout: 10          # SMTP connection timeout in seconds
+smtp_ports:               # SMTP ports to test
+  - 25
+  - 465
+  - 587
+```
+
+All configuration options can be overridden with environment variables by using the prefix `MXCLONE_` followed by the option name in uppercase. For example, `MXCLONE_LOG_LEVEL=debug`.
 
 ## Contributing
 
-(Optional: Add contribution guidelines if this is an open project).
+Contributions to mxclone are welcome! Here's how you can help:
+
+1. **Report bugs or request features**: Open an issue describing what you found or what you'd like to see.
+
+2. **Submit pull requests**: Make sure to:
+   - Follow the existing code style and architecture patterns
+   - Add appropriate tests for your changes
+   - Update documentation as needed
+   - Keep pull requests focused on a single concern
+
+3. **Development workflow**:
+   - Fork the repository
+   - Create a feature branch (`git checkout -b feature/amazing-feature`)
+   - Commit your changes (`git commit -m 'Add amazing feature'`)
+   - Push to the branch (`git push origin feature/amazing-feature`)
+   - Open a Pull Request
+
+4. **Code guidelines**:
+   - Maintain the hexagonal architecture pattern
+   - Write unit tests for domain logic
+   - Write integration tests for adapters
+   - Follow Go best practices and conventions
+
+By contributing, you agree to license your contributions under the same license as this project.
 
 ## License
 
-(Optional: Specify the project's license, e.g., MIT, Apache 2.0).
+This project is licensed under the MIT License - see below for details:
+
+```
+MIT License
+
+Copyright (c) 2025 MXClone Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
