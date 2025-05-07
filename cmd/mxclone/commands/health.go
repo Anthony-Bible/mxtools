@@ -11,10 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"mxclone/pkg/dns"
-	"mxclone/pkg/dnsbl"
-	"mxclone/pkg/emailauth"
-	"mxclone/pkg/smtp"
+	"mxclone/domain/dns"
 	"mxclone/pkg/types"
 	"mxclone/pkg/validation"
 )
@@ -49,6 +46,12 @@ to provide an overall assessment of the domain's health.`,
 		ctx := context.Background()
 		timeoutDuration := time.Duration(timeout) * time.Second
 
+		// Get services from the dependency injection container
+		dnsService := Container.GetDNSService()
+		dnsblService := Container.GetDNSBLService()
+		smtpService := Container.GetSMTPService()
+		emailAuthService := Container.GetEmailAuthService()
+
 		// Create a domain health report
 		report := &types.DomainHealthReport{
 			Domain:    domain,
@@ -68,7 +71,7 @@ to provide an overall assessment of the domain's health.`,
 			checks++
 			go func() {
 				fmt.Println("Performing DNS checks...")
-				dnsResult, err := performDNSCheck(ctx, domain, timeoutDuration)
+				dnsResult, err := dnsService.LookupAll(ctx, domain)
 				resultsCh <- result{name: "dns", val: dnsResult, err: err}
 			}()
 		}
@@ -78,7 +81,24 @@ to provide an overall assessment of the domain's health.`,
 			checks++
 			go func() {
 				fmt.Println("Performing blacklist checks...")
-				blacklistResult, err := performBlacklistCheck(ctx, domain, timeoutDuration)
+				// First, get the IP addresses for the domain
+				dnsResult, err := dnsService.Lookup(ctx, domain, dns.TypeA)
+				if err != nil || len(dnsResult.Lookups[string(dns.TypeA)]) == 0 {
+					resultsCh <- result{name: "blacklist", val: nil, err: fmt.Errorf("failed to resolve domain to IP: %v", err)}
+					return
+				}
+
+				// Use the first IP address for blacklist check
+				ip := dnsResult.Lookups[string(dns.TypeA)][0]
+
+				// Default blacklist zones
+				zones := []string{
+					"bl.spamcop.net",
+					"dnsbl.sorbs.net",
+				}
+
+				// Check the IP against the blacklists
+				blacklistResult, err := dnsblService.CheckMultipleBlacklists(ctx, ip, zones, timeoutDuration)
 				resultsCh <- result{name: "blacklist", val: blacklistResult, err: err}
 			}()
 		}
@@ -88,7 +108,22 @@ to provide an overall assessment of the domain's health.`,
 			checks++
 			go func() {
 				fmt.Println("Performing SMTP checks...")
-				smtpResult, err := performSMTPCheck(ctx, domain, timeoutDuration)
+				// First, get MX records for the domain
+				mxResult, err := dnsService.Lookup(ctx, domain, dns.TypeMX)
+				if err != nil || len(mxResult.Lookups[string(dns.TypeMX)]) == 0 {
+					resultsCh <- result{name: "smtp", val: nil, err: fmt.Errorf("failed to get MX records: %v", err)}
+					return
+				}
+
+				// Extract the hostname from the first MX record
+				mxRecord := mxResult.Lookups[string(dns.TypeMX)][0]
+				hostname := mxRecord
+				if idx := strings.Index(mxRecord, " (priority:"); idx > 0 {
+					hostname = mxRecord[:idx]
+				}
+
+				// Perform SMTP check on the MX server
+				smtpResult, err := smtpService.CheckSMTP(ctx, hostname, timeoutDuration)
 				resultsCh <- result{name: "smtp", val: smtpResult, err: err}
 			}()
 		}
@@ -98,7 +133,8 @@ to provide an overall assessment of the domain's health.`,
 			checks++
 			go func() {
 				fmt.Println("Performing email authentication checks...")
-				authResult, err := performAuthCheck(ctx, domain, timeoutDuration)
+				// Perform email authentication check with no DKIM selectors
+				authResult, err := emailAuthService.CheckAll(ctx, domain, nil, timeoutDuration)
 				resultsCh <- result{name: "auth", val: authResult, err: err}
 			}()
 		}
@@ -109,8 +145,13 @@ to provide an overall assessment of the domain's health.`,
 			case "dns":
 				if res.err != nil {
 					fmt.Fprintf(os.Stderr, "Error performing DNS check: %v\n", res.err)
-				} else if dnsRes, ok := res.val.(*types.DNSResult); ok {
-					report.DNS = dnsRes
+				} else if dnsRes, ok := res.val.(*dns.DNSResult); ok {
+					// Convert domain.DNSResult to types.DNSResult
+					typeDNSResult := &types.DNSResult{
+						Lookups: dnsRes.Lookups,
+						Error:   dnsRes.Error,
+					}
+					report.DNS = typeDNSResult
 				}
 			case "blacklist":
 				if res.err != nil {
@@ -149,58 +190,6 @@ to provide an overall assessment of the domain's health.`,
 			fmt.Println(formatHealthReport(report))
 		}
 	},
-}
-
-// performDNSCheck performs DNS checks for a domain.
-func performDNSCheck(ctx context.Context, domain string, timeout time.Duration) (*types.DNSResult, error) {
-	// Perform DNS lookup for common record types
-	return dns.LookupAll(ctx, domain)
-}
-
-// performBlacklistCheck performs blacklist checks for a domain.
-func performBlacklistCheck(ctx context.Context, domain string, timeout time.Duration) (*types.BlacklistResult, error) {
-	// First, get the IP addresses for the domain
-	dnsResult, err := dns.LookupWithRetry(ctx, domain, "A", 2, timeout)
-	if err != nil || len(dnsResult.Lookups["A"]) == 0 {
-		return nil, fmt.Errorf("failed to resolve domain to IP: %v", err)
-	}
-
-	// Use the first IP address for blacklist check
-	ip := dnsResult.Lookups["A"][0]
-
-	// Default blacklist zones
-	zones := []string{
-		"bl.spamcop.net",
-		"dnsbl.sorbs.net",
-	}
-
-	// Check the IP against the blacklists
-	return dnsbl.CheckMultipleBlacklists(ctx, ip, zones, timeout), nil
-}
-
-// performSMTPCheck performs SMTP checks for a domain.
-func performSMTPCheck(ctx context.Context, domain string, timeout time.Duration) (*types.SMTPResult, error) {
-	// First, get MX records for the domain
-	mxResult, err := dns.LookupWithRetry(ctx, domain, "MX", 2, timeout)
-	if err != nil || len(mxResult.Lookups["MX"]) == 0 {
-		return nil, fmt.Errorf("failed to get MX records: %v", err)
-	}
-
-	// Extract the hostname from the first MX record
-	mxRecord := mxResult.Lookups["MX"][0]
-	hostname := mxRecord
-	if idx := strings.Index(mxRecord, " (priority:"); idx > 0 {
-		hostname = mxRecord[:idx]
-	}
-
-	// Perform SMTP check on the MX server
-	return smtp.CheckSMTP(ctx, hostname, smtp.DefaultPorts, timeout)
-}
-
-// performAuthCheck performs email authentication checks for a domain.
-func performAuthCheck(ctx context.Context, domain string, timeout time.Duration) (*types.AuthResult, error) {
-	// Perform email authentication check
-	return emailauth.CheckEmailAuth(ctx, domain, timeout)
 }
 
 // calculateOverallStatus calculates the overall status of a domain based on the check results.

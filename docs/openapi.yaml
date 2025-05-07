@@ -1,0 +1,227 @@
+openapi: 3.0.3
+info:
+  title: MXClone API
+  description: API for MXToolbox clone providing DNS, blacklist, SMTP, email authentication, and network diagnostics
+  version: 1.0.0
+  contact:
+    name: MXClone Team
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server (versioned API)
+  - url: http://localhost:8080/api
+    description: Local development server (legacy API)
+
+tags:
+  - name: dns
+    description: DNS lookup operations
+  - name: blacklist
+    description: IP and domain blacklist checking
+  - name: smtp
+    description: SMTP server diagnostics
+  - name: email-auth
+    description: Email authentication (SPF, DKIM, DMARC)
+  - name: network
+    description: Network tools (ping, traceroute, WHOIS)
+  - name: health
+    description: System health and status
+
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Check API health
+      description: Returns the health status of the API
+      operationId: getHealth
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  version:
+                    type: string
+                    example: v1
+
+  /dns:
+    post:
+      tags:
+        - dns
+      summary: Perform DNS lookups
+      description: Performs DNS lookups for multiple record types
+      operationId: dnsLookup
+      requestBody:
+        description: Domain to check
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DNSResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /blacklist:
+    post:
+      tags:
+        - blacklist
+      summary: Check IP or domain against blacklists
+      description: Checks if an IP or domain is listed in DNS blacklists
+      operationId: blacklistCheck
+      requestBody:
+        description: IP or domain to check
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlacklistResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CheckRequest:
+      type: object
+      required:
+        - target
+      properties:
+        target:
+          type: string
+          description: Domain, IP, or other target to check
+          example: example.com
+        option:
+          type: string
+          description: Optional parameter for specific checks
+          example: mx
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: Invalid domain name
+        code:
+          type: integer
+          description: HTTP status code
+          example: 400
+        details:
+          type: string
+          description: Additional error details
+          example: Domain name cannot contain spaces
+
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field that failed validation
+          example: target
+        message:
+          type: string
+          description: Validation error message
+          example: invalid domain name format
+
+    ValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether the validation passed
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    DNSResponse:
+      type: object
+      properties:
+        records:
+          type: object
+          additionalProperties: true
+          description: DNS records by type
+          example:
+            A: ["192.0.2.1"]
+            MX: ["10 mail.example.com."]
+            TXT: ["v=spf1 include:_spf.example.com ~all"]
+        timing:
+          type: string
+          description: Time taken for the DNS lookups
+          example: 245.3ms
+        error:
+          type: string
+          description: Error message, if any
+          example: timeout on NS lookup
+
+    BlacklistResponse:
+      type: object
+      properties:
+        target:
+          type: string
+          description: IP or domain that was checked
+          example: 192.0.2.1
+        listed:
+          type: boolean
+          description: Whether the target is listed on any blacklist
+          example: false
+        results:
+          type: object
+          additionalProperties: true
+          description: Results by blacklist zone
+          example:
+            "bl.spamcop.net": {"listed": false}
+            "dnsbl.sorbs.net": {"listed": true, "text": "Blocked - see https://sorbs.net"}
+        timing:
+          type: string
+          description: Time taken for the blacklist checks
+          example: 1.23s
+        summary:
+          type: string
+          description: Summary of blacklist results
+          example: Listed on 1 of 2 blacklists
+        error:
+          type: string
+          description: Error message, if any
+          example: null

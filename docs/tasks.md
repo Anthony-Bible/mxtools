@@ -166,3 +166,19 @@ Comprehensive testing of workflows and user interactions
 **MILESTONE 13: End-to-End testing complete**
 
 **FINAL MILESTONE: MXToolbox Clone v1.0 Ready for Deployment**
+
+## Post v1.0 Enhancements
+
+### API Layer with Hexagonal Architecture
+81. [x] Refactor API handlers to use input ports instead of direct package calls (1d)
+82. [x] Create API models aligned with domain models for clean request/response mapping (4h)
+83. [x] Implement middleware as adapters following hexagonal architecture (4h)
+84. [x] Add comprehensive request validation at API boundary (4h)
+85. [x] Enhance error handling to properly map domain errors to HTTP responses (4h)
+86. [x] Implement API versioning structure for future compatibility (4h)
+87. [x] Create OpenAPI specification for all endpoints (1d)
+88. [x] Refactor rate limiting as a proper adapter (4h)
+89. [x] Add integration tests specifically for API layer (1d)
+90. [x] Document the hexagonal architecture approach in API layer (4h)
+
+**MILESTONE 14: Enhanced API Layer with Hexagonal Architecture**

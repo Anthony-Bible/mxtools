@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"mxclone/pkg/networktools"
+	"mxclone/domain/networktools"
 	"mxclone/pkg/validation"
 )
 
@@ -45,8 +45,11 @@ var PingCmd = &cobra.Command{
 		ctx := context.Background()
 		timeoutDuration := time.Duration(timeout) * time.Second
 
+		// Get the network tools service from the dependency injection container
+		networkService := Container.GetNetworkToolsService()
+
 		// Perform the ping
-		result, err := networktools.PingWithPrivilegeCheck(ctx, host, count, timeoutDuration)
+		result, err := networkService.ExecutePing(ctx, host, count, timeoutDuration)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -54,28 +57,7 @@ var PingCmd = &cobra.Command{
 
 		// Output the result
 		if outputFormat == "json" {
-			// Convert durations to string with ms suffix for JSON output
-			type pingResultWithMs struct {
-				Target     string  `json:"target"`
-				Sent       int     `json:"sent"`
-				Received   int     `json:"received"`
-				PacketLoss float64 `json:"packetLoss"`
-				MinRTT     string  `json:"minRttMs"`
-				MaxRTT     string  `json:"maxRttMs"`
-				AvgRTT     string  `json:"avgRttMs"`
-				Error      string  `json:"error,omitempty"`
-			}
-			pr := pingResultWithMs{
-				Target:     result.Target,
-				Sent:       result.Sent,
-				Received:   result.Received,
-				PacketLoss: result.PacketLoss,
-				MinRTT:     fmt.Sprintf("%.3fms", float64(result.MinRTT)/float64(time.Millisecond)),
-				MaxRTT:     fmt.Sprintf("%.3fms", float64(result.MaxRTT)/float64(time.Millisecond)),
-				AvgRTT:     fmt.Sprintf("%.3fms", float64(result.AvgRTT)/float64(time.Millisecond)),
-				Error:      result.Error,
-			}
-			jsonOutput, err := json.MarshalIndent(pr, "", "  ")
+			jsonOutput, err := json.MarshalIndent(result, "", "  ")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
 				os.Exit(1)
@@ -83,7 +65,9 @@ var PingCmd = &cobra.Command{
 			fmt.Println(string(jsonOutput))
 		} else {
 			// Text output
-			fmt.Println(networktools.FormatPingResult(result))
+			pingResult := networkService.WrapResult(networktools.ToolTypePing, result, nil, nil, nil)
+			summary := networkService.FormatToolResult(pingResult)
+			fmt.Println(summary)
 		}
 	},
 }
@@ -112,9 +96,11 @@ var TracerouteCmd = &cobra.Command{
 		ctx := context.Background()
 		timeoutDuration := time.Duration(timeout) * time.Second
 
+		// Get the network tools service from the dependency injection container
+		networkService := Container.GetNetworkToolsService()
+
 		// Perform the traceroute
-		//result, err := networktools.TracerouteWithPrivilegeCheck(ctx, host, maxHops, timeoutDuration)
-		result, err := networktools.Traceroute(ctx, host, maxHops, timeoutDuration)
+		result, err := networkService.ExecuteTraceroute(ctx, host, maxHops, timeoutDuration)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -130,7 +116,9 @@ var TracerouteCmd = &cobra.Command{
 			fmt.Println(string(jsonOutput))
 		} else {
 			// Text output
-			fmt.Println(networktools.FormatTracerouteResult(result))
+			tracerouteResult := networkService.WrapResult(networktools.ToolTypeTraceroute, nil, result, nil, nil)
+			summary := networkService.FormatToolResult(tracerouteResult)
+			fmt.Println(summary)
 		}
 	},
 }
@@ -152,18 +140,8 @@ var WhoisCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// Get and validate server if provided
-		server, _ := cmd.Flags().GetString("server")
-		if server != "" {
-			if err := validation.ValidateHost(server); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-		}
-
-		// Get other command flags
+		// Get command flags
 		timeout, _ := cmd.Flags().GetInt("timeout")
-		followReferral, _ := cmd.Flags().GetBool("follow-referral")
 		outputFormat, _ := cmd.Flags().GetString("output")
 
 		fmt.Printf("Looking up WHOIS information for %s...\n", query)
@@ -171,21 +149,11 @@ var WhoisCmd = &cobra.Command{
 		ctx := context.Background()
 		timeoutDuration := time.Duration(timeout) * time.Second
 
-		var result *networktools.WhoisResult
-		var err error
+		// Get the network tools service from the dependency injection container
+		networkService := Container.GetNetworkToolsService()
 
-		if followReferral {
-			// Perform the WHOIS query with referral
-			result, err = networktools.WhoisWithReferral(ctx, query, timeoutDuration)
-		} else {
-			// Perform the WHOIS query
-			whoisServer := networktools.DefaultWhoisServer
-			if server != "" {
-				whoisServer.Host = server
-			}
-			result, err = networktools.Whois(ctx, query, whoisServer, timeoutDuration)
-		}
-
+		// Perform the WHOIS lookup
+		result, err := networkService.ExecuteWHOIS(ctx, query, timeoutDuration)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -201,7 +169,9 @@ var WhoisCmd = &cobra.Command{
 			fmt.Println(string(jsonOutput))
 		} else {
 			// Text output
-			fmt.Println(networktools.FormatWhoisResult(result))
+			whoisResult := networkService.WrapResult(networktools.ToolTypeWHOIS, nil, nil, result, nil)
+			summary := networkService.FormatToolResult(whoisResult)
+			fmt.Println(summary)
 		}
 	},
 }
@@ -221,9 +191,7 @@ func init() {
 	TracerouteCmd.Flags().IntP("timeout", "t", 5, "Timeout in seconds")
 
 	// Whois command flags
-	WhoisCmd.Flags().StringP("server", "s", "", "WHOIS server to query (default: whois.iana.org)")
 	WhoisCmd.Flags().IntP("timeout", "t", 10, "Timeout in seconds")
-	WhoisCmd.Flags().BoolP("follow-referral", "f", true, "Follow referrals to other WHOIS servers")
 
 	// Add the network command to the root command
 	rootCmd.AddCommand(NetworkCmd)
