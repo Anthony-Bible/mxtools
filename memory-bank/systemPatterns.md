@@ -1,40 +1,74 @@
 # System Patterns
 
-## Architecture
-- Modular Go monorepo: cmd/, pkg/, internal/, docs/, memory-bank/
-- Core engine/orchestrator coordinates diagnostics and aggregation
-- CLI, API, and UI layers interface with core engine
-- Containerized deployment using Docker (multi-stage build: Go backend + React UI)
-- Kubernetes manifests for infrastructure-as-code deployment
-- CI/CD pipeline via GitHub Actions for automated builds and deployments
+## Hexagonal Architecture (Ports and Adapters)
+- Core architecture pattern implementing clear separation of concerns
+- Domain core contains pure business logic with no external dependencies
+- Ports define interface contracts between layers
+  - Input ports: Use cases that application offers to the outside world
+  - Output ports: External dependencies required by the domain
+- Adapters implement the interfaces defined by ports
+  - Primary adapters: Drive the application (API, CLI, UI)
+  - Secondary adapters: Driven by the application (Repositories, External services)
+- Benefits: Testability, maintainability, flexibility to change infrastructure
 
-## Key Technical Decisions
-- Use Go for concurrency, performance, and ecosystem
-- Standard library for basic networking; miekg/dns for advanced DNS
-- Worker pools for parallel checks
-- Caching for DNS/blacklist
-- Rate limiting and input validation throughout
-- Containerization for consistent builds and deployments
-- Kubernetes for scalable, portable infrastructure
-- GitHub Actions for automated CI/CD
+## Dependency Injection
+- Used for wiring components together while maintaining loose coupling
+- Implemented in internal/di/container.go
+- Enables easy swapping of implementation details without changing business logic
+- Makes testing easier with mock implementations
 
-## Design Patterns
-- Command pattern for CLI/API commands
-- Factory pattern for diagnostics
-- Adapter pattern for integrating third-party libraries
-- Strategy pattern for result formatting
-- Multi-stage Docker build for efficient image creation
-- Infrastructure-as-code for deployment (Kubernetes YAML)
+## Module Organization
+- Domain modules organized by business capability:
+  - DNS - DNS lookup functionality
+  - DNSBL - DNS blacklist checking
+  - EmailAuth - SPF, DKIM, DMARC verification
+  - NetworkTools - Ping, traceroute, WHOIS
+  - SMTP - SMTP server testing
+- Each module contains:
+  - Domain models in domain/[module]/model.go
+  - Port definitions in ports/input/[module]_port.go and ports/output/[module]_repository.go
+  - Primary adapter implementation in adapters/primary/[module]_service.go
+  - Secondary adapter implementation in adapters/secondary/[module]_repository.go
+  - Implementation details in pkg/[module]/
 
-## Component Relationships
-- CLI/API/UI -> Engine -> Diagnostics (DNS, Blacklist, SMTP, etc.)
-- Diagnostics -> Output, Logging, Caching
-- Docker image encapsulates backend and UI for deployment
-- Kubernetes manages service lifecycle and scaling
-- CI/CD pipeline automates build, test, and deploy
+## Command Pattern (CLI)
+- Cobra-based hierarchical command structure in cmd/mxclone/commands/
+- Each module has its own command group
+- Commands interact with the domain through the port interfaces
 
-## Critical Implementation Paths
-- Orchestrator dispatches and aggregates checks
-- Error handling and logging are centralized
-- Extensible for new diagnostics and output formats
-- Automated build and deployment via CI/CD
+## Repository Pattern
+- Used for data access abstraction
+- Defined in ports/output/[module]_repository.go
+- Implemented in adapters/secondary/[module]_repository.go
+- Provides clean separation between business logic and data access
+
+## Service Pattern
+- Core application services defined as input ports in ports/input/[module]_port.go
+- Implemented in adapters/primary/[module]_service.go
+- Orchestrates business logic and interacts with repositories
+
+## Worker Pool Pattern
+- Implemented in pkg/orchestration/worker_pool.go
+- Used for concurrent execution of DNS lookups and network diagnostics
+- Manages resource usage and prevents overwhelming target systems
+
+## Rate Limiting
+- Implemented in pkg/ratelimit/
+- Protects target systems from excessive requests
+- Configurable per operation type
+
+## Error Handling
+- Centralized error types in pkg/errors/
+- Consistent error wrapping and propagation
+- Differentiation between business errors and technical errors
+
+## Validation
+- Input validation in pkg/validation/
+- Ensures data integrity before processing
+- Prevents security issues from malformed input
+
+## Testing Patterns
+- Unit tests for business logic
+- Integration tests for external dependencies
+- E2E tests with Cypress for UI flows
+- Test doubles (mocks/stubs) for isolating components
