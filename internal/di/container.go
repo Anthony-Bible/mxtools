@@ -4,11 +4,16 @@ package di
 import (
 	"mxclone/adapters/primary"
 	"mxclone/adapters/secondary"
+	"mxclone/pkg/logging"
 	"mxclone/ports/input"
+	"os"
 )
 
 // Container represents a simple dependency injection container
 type Container struct {
+	// Logger
+	logger *logging.Logger
+
 	// Services (primary adapters implementing input ports)
 	dnsService          input.DNSPort
 	dnsblService        input.DNSBLPort
@@ -18,7 +23,10 @@ type Container struct {
 }
 
 // NewContainer creates a new dependency injection container with all services properly wired up
-func NewContainer() *Container {
+func NewContainer(appName string) *Container {
+	// Create logger with proper parameters
+	logger := logging.NewLogger(appName, logging.LevelInfo, os.Stdout)
+
 	// Create repositories (secondary adapters implementing output ports)
 	dnsRepository := secondary.NewDNSRepository()
 
@@ -38,12 +46,18 @@ func NewContainer() *Container {
 	networkToolsService := primary.NewNetworkToolsAdapter(networkToolsRepository)
 
 	return &Container{
+		logger:              logger,
 		dnsService:          dnsService,
 		dnsblService:        dnsblService,
 		smtpService:         smtpService,
 		emailAuthService:    emailAuthService,
 		networkToolsService: networkToolsService,
 	}
+}
+
+// GetLogger returns the logger
+func (c *Container) GetLogger() *logging.Logger {
+	return c.logger
 }
 
 // GetDNSService returns the DNS service

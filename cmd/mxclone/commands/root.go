@@ -29,8 +29,8 @@ check if an IP is blacklisted, and test SMTP connectivity.`,
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	// Initialize the dependency injection container
-	Container = di.NewContainer()
+	// Initialize the dependency injection container with app name
+	Container = di.NewContainer("mxclone")
 
 	// Execute the root command
 	err := rootCmd.Execute()
@@ -43,4 +43,13 @@ func Execute() {
 func init() {
 	// Add shared global flags here
 	rootCmd.PersistentFlags().StringP("output", "o", "text", "Output format (text, json)")
+
+	// Register all commands with the root command
+	rootCmd.AddCommand(ApiCmd)
+	rootCmd.AddCommand(DnsCmd)
+	rootCmd.AddCommand(BlacklistCmd)
+	rootCmd.AddCommand(AuthCmd)
+	rootCmd.AddCommand(SMTPCmd)
+	rootCmd.AddCommand(HealthCmd)
+	rootCmd.AddCommand(NetworkCmd)
 }
