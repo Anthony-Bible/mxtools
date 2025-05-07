@@ -15,12 +15,18 @@ var ApiCmd = &cobra.Command{
 		// Get services and logger from the shared DI container
 		dnsService := Container.GetDNSService()
 		dnsblService := Container.GetDNSBLService()
+		smtpService := Container.GetSMTPService()
+		emailAuthService := Container.GetEmailAuthService()
+		networkToolsService := Container.GetNetworkToolsService()
 		logger := Container.GetLogger()
 
 		// Start API server with dependencies
 		err := api.StartAPIServer(
 			dnsService,
 			dnsblService,
+			smtpService,
+			emailAuthService,
+			networkToolsService,
 			logger,
 		)
 

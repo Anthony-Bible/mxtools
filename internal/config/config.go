@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -17,10 +19,10 @@ type Config struct {
 	CacheDir    string `mapstructure:"cache_dir"`
 
 	// DNS settings
-	DNSTimeout     int      `mapstructure:"dns_timeout"`
-	DNSRetries     int      `mapstructure:"dns_retries"`
-	DNSResolvers   []string `mapstructure:"dns_resolvers"`
-	DNSCacheTTL    int      `mapstructure:"dns_cache_ttl"`
+	DNSTimeout   int      `mapstructure:"dns_timeout"`
+	DNSRetries   int      `mapstructure:"dns_retries"`
+	DNSResolvers []string `mapstructure:"dns_resolvers"`
+	DNSCacheTTL  int      `mapstructure:"dns_cache_ttl"`
 
 	// Blacklist settings
 	BlacklistZones    []string `mapstructure:"blacklist_zones"`
@@ -28,8 +30,20 @@ type Config struct {
 	BlacklistCacheTTL int      `mapstructure:"blacklist_cache_ttl"`
 
 	// SMTP settings
-	SMTPTimeout int `mapstructure:"smtp_timeout"`
+	SMTPTimeout int   `mapstructure:"smtp_timeout"`
 	SMTPPorts   []int `mapstructure:"smtp_ports"`
+}
+
+// APIConfig contains API configuration options
+type APIConfig struct {
+	// Rate limiting settings
+	RateLimitRequestsPerMinute int           // Number of requests allowed per minute per IP
+	RateLimitBurstSize         int           // Burst size for rate limiting
+	RateLimitCleanupInterval   time.Duration // How often to clean up old entries in the rate limiter
+
+	// Server settings
+	Port int    // The port on which the API server listens
+	Host string // The host address to bind to
 }
 
 // DefaultConfig returns the default configuration.
@@ -55,6 +69,43 @@ func DefaultConfig() *Config {
 		SMTPTimeout: 10,
 		SMTPPorts:   []int{25, 465, 587},
 	}
+}
+
+// NewAPIConfig creates a new API configuration with defaults and environment overrides
+func NewAPIConfig() *APIConfig {
+	config := &APIConfig{
+		// Default settings
+		RateLimitRequestsPerMinute: 60, // 1 request per second on average
+		RateLimitBurstSize:         10, // Allow bursts of up to 10 requests
+		RateLimitCleanupInterval:   time.Minute * 5,
+		Port:                       8080,
+		Host:                       "0.0.0.0",
+	}
+
+	// Override defaults with environment variables if set
+	if val := os.Getenv("API_RATE_LIMIT_RPM"); val != "" {
+		if rpm, err := strconv.Atoi(val); err == nil && rpm > 0 {
+			config.RateLimitRequestsPerMinute = rpm
+		}
+	}
+
+	if val := os.Getenv("API_RATE_LIMIT_BURST"); val != "" {
+		if burst, err := strconv.Atoi(val); err == nil && burst > 0 {
+			config.RateLimitBurstSize = burst
+		}
+	}
+
+	if val := os.Getenv("API_PORT"); val != "" {
+		if port, err := strconv.Atoi(val); err == nil && port > 0 {
+			config.Port = port
+		}
+	}
+
+	if val := os.Getenv("API_HOST"); val != "" {
+		config.Host = val
+	}
+
+	return config
 }
 
 // LoadConfig loads the configuration from file and environment variables.

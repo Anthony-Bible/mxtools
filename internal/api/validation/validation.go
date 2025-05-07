@@ -157,3 +157,88 @@ func ValidateNetworkToolRequest(req *models.CheckRequest, tool string) *Validati
 
 	return result
 }
+
+// ValidateSMTPRelayTestRequest validates an SMTP relay test request
+func ValidateSMTPRelayTestRequest(req *models.SMTPRelayTestRequest) *ValidationResult {
+	result := &ValidationResult{Valid: true}
+
+	// Check if host is empty
+	if req.Host == "" {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "host",
+			Message: "host cannot be empty",
+		})
+	} else {
+		// Check if host is a valid domain or IP
+		if err := validation.ValidateDomain(req.Host); err != nil {
+			if err := validation.ValidateIP(req.Host); err != nil {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{
+					Field:   "host",
+					Message: "invalid domain or IP address",
+				})
+			}
+		}
+	}
+
+	// Check if fromAddress is a valid email
+	if req.FromAddress == "" {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "fromAddress",
+			Message: "fromAddress cannot be empty",
+		})
+	} else if err := validation.ValidateEmail(req.FromAddress); err != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "fromAddress",
+			Message: "invalid email address: " + err.Error(),
+		})
+	}
+
+	// Check if toAddress is a valid email
+	if req.ToAddress == "" {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "toAddress",
+			Message: "toAddress cannot be empty",
+		})
+	} else if err := validation.ValidateEmail(req.ToAddress); err != nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "toAddress",
+			Message: "invalid email address: " + err.Error(),
+		})
+	}
+
+	// Check port is valid (if specified)
+	if req.Port < 0 || req.Port > 65535 {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "port",
+			Message: "port must be between 0 and 65535",
+		})
+	}
+
+	// If authentication is required, validate credentials
+	if req.Authentication {
+		if req.Username == "" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Field:   "username",
+				Message: "username is required when authentication is enabled",
+			})
+		}
+
+		if req.Password == "" {
+			result.Valid = false
+			result.Errors = append(result.Errors, ValidationError{
+				Field:   "password",
+				Message: "password is required when authentication is enabled",
+			})
+		}
+	}
+
+	return result
+}

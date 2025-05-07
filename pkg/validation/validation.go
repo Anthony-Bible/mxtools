@@ -4,6 +4,7 @@ package validation
 import (
 	"fmt"
 	"net"
+	"net/mail"
 	"net/url"
 	"os"
 	"regexp"
@@ -13,14 +14,15 @@ import (
 
 // Common validation errors
 var (
-	ErrEmptyInput      = fmt.Errorf("input cannot be empty")
-	ErrInvalidDomain   = fmt.Errorf("invalid domain name")
-	ErrInvalidIP       = fmt.Errorf("invalid IP address")
-	ErrInvalidPort     = fmt.Errorf("invalid port number")
-	ErrInvalidServer   = fmt.Errorf("invalid server address")
-	ErrInvalidSelector = fmt.Errorf("invalid selector")
-	ErrInvalidFile     = fmt.Errorf("invalid file path")
+	ErrEmptyInput        = fmt.Errorf("input cannot be empty")
+	ErrInvalidDomain     = fmt.Errorf("invalid domain name")
+	ErrInvalidIP         = fmt.Errorf("invalid IP address")
+	ErrInvalidPort       = fmt.Errorf("invalid port number")
+	ErrInvalidServer     = fmt.Errorf("invalid server address")
+	ErrInvalidSelector   = fmt.Errorf("invalid selector")
+	ErrInvalidFile       = fmt.Errorf("invalid file path")
 	ErrInvalidRecordType = fmt.Errorf("invalid DNS record type")
+	ErrInvalidEmail      = fmt.Errorf("invalid email address")
 )
 
 // ValidateDomain validates a domain name.
@@ -191,17 +193,38 @@ func ValidateDNSRecordType(recordType string) error {
 	return nil
 }
 
+// ValidateEmail validates an email address.
+func ValidateEmail(email string) error {
+	if email == "" {
+		return ErrEmptyInput
+	}
+
+	// Use mail.ParseAddress for strict RFC 5322 validation
+	_, err := mail.ParseAddress(email)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidEmail, err)
+	}
+
+	// Additional check to ensure the email has a domain part with at least one dot
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 || !strings.Contains(parts[1], ".") {
+		return ErrInvalidEmail
+	}
+
+	return nil
+}
+
 // SanitizeDomain sanitizes a domain name.
 func SanitizeDomain(domain string) string {
 	// Remove any whitespace
 	domain = strings.TrimSpace(domain)
-	
+
 	// Convert to lowercase
 	domain = strings.ToLower(domain)
-	
+
 	// Remove any trailing dot
 	domain = strings.TrimSuffix(domain, ".")
-	
+
 	return domain
 }
 
@@ -209,7 +232,7 @@ func SanitizeDomain(domain string) string {
 func SanitizeIP(ip string) string {
 	// Remove any whitespace
 	ip = strings.TrimSpace(ip)
-	
+
 	return ip
 }
 
@@ -217,7 +240,7 @@ func SanitizeIP(ip string) string {
 func SanitizeSelector(selector string) string {
 	// Remove any whitespace
 	selector = strings.TrimSpace(selector)
-	
+
 	return selector
 }
 
@@ -225,9 +248,9 @@ func SanitizeSelector(selector string) string {
 func SanitizeDNSRecordType(recordType string) string {
 	// Remove any whitespace
 	recordType = strings.TrimSpace(recordType)
-	
+
 	// Convert to uppercase
 	recordType = strings.ToUpper(recordType)
-	
+
 	return recordType
 }

@@ -2,9 +2,11 @@ package api
 
 import (
 	"log"
+	"mxclone/internal/api/errors"
 	"mxclone/internal/api/handlers"
 	"mxclone/internal/api/middleware"
 	v1 "mxclone/internal/api/v1"
+	"mxclone/internal/api/validation"
 	"mxclone/internal/api/version"
 	"mxclone/pkg/logging"
 	"mxclone/ports/input"
@@ -16,13 +18,25 @@ import (
 // Server represents the API server
 type Server struct {
 	// Handlers
-	dnsHandler   *handlers.DNSHandler
-	dnsblHandler *handlers.DNSBLHandler
+	dnsHandler          *handlers.DNSHandler
+	dnsblHandler        *handlers.DNSBLHandler
+	smtpHandler         *handlers.SMTPHandler
+	emailAuthHandler    *handlers.EmailAuthHandler
+	networkToolsHandler *handlers.NetworkToolsHandler
+	docsHandler         *handlers.DocsHandler
 	// Add other handlers here
 
 	// Middleware
 	rateLimiter *middleware.RateLimiter
 	logger      *middleware.Logger
+	validator   *middleware.Validator
+
+	// Validators
+	jsonValidator  *validation.JSONValidator
+	paramValidator *validation.ParamValidator
+
+	// Error handler
+	errorHandler *errors.ErrorHandler
 
 	// API versioning
 	versionedHandler *version.VersionedHandler
@@ -32,15 +46,34 @@ type Server struct {
 func NewServer(
 	dnsService input.DNSPort,
 	dnsblService input.DNSBLPort,
+	smtpService input.SMTPPort,
+	emailAuthService input.EmailAuthPort,
+	networkToolsService input.NetworkToolsPort,
 	// Add other services here
 	logger *logging.Logger,
 ) *Server {
+	// Create error handler first so we can attach it to middleware
+	errorHandler := errors.NewErrorHandler(logger)
+
+	// Create and configure rate limiter
+	rateLimiter := middleware.NewRateLimiter(logger)
+	rateLimiter.WithErrorHandler(errorHandler)
+	rateLimiter.Start() // Start the background cleanup routine
+
 	server := &Server{
-		dnsHandler:   handlers.NewDNSHandler(dnsService),
-		dnsblHandler: handlers.NewDNSBLHandler(dnsblService),
+		dnsHandler:          handlers.NewDNSHandler(dnsService),
+		dnsblHandler:        handlers.NewDNSBLHandler(dnsblService),
+		smtpHandler:         handlers.NewSMTPHandler(smtpService),
+		emailAuthHandler:    handlers.NewEmailAuthHandler(emailAuthService),
+		networkToolsHandler: handlers.NewNetworkToolsHandler(networkToolsService),
+		docsHandler:         handlers.NewDocsHandler(logger),
 		// Initialize other handlers
-		rateLimiter:      middleware.NewRateLimiter(10, logger), // 10 requests per minute
+		rateLimiter:      rateLimiter,
 		logger:           middleware.NewLogger(logger),
+		validator:        middleware.NewValidator(logger),
+		jsonValidator:    validation.NewJSONValidator(),
+		paramValidator:   validation.NewParamValidator(),
+		errorHandler:     errorHandler,
 		versionedHandler: version.NewVersionedHandler(),
 	}
 
@@ -56,7 +89,17 @@ func (s *Server) setupVersionedRoutes() {
 	v1Router := v1.NewRouter(
 		s.dnsHandler,
 		s.dnsblHandler,
+		s.smtpHandler,
+		s.emailAuthHandler,
+		s.networkToolsHandler,
+		s.docsHandler,
 		// Other handlers would be added here
+		s.validator,
+		s.jsonValidator,
+		s.paramValidator,
+		s.logger,
+		s.rateLimiter,
+		s.errorHandler,
 	)
 
 	// Register v1 handler with versioned handler
@@ -70,46 +113,34 @@ func (s *Server) Start() error {
 	if uiDist == "" {
 		uiDist = "./ui/dist"
 	}
-	fs := http.FileServer(http.Dir(uiDist))
 
-	// Root handler to serve UI files and handle client-side routing
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Handle versioned API requests
-		if len(r.URL.Path) >= 5 && r.URL.Path[:5] == "/api/" {
-			s.versionedHandler.ServeHTTP(w, r)
-			return
-		}
+	mux := http.NewServeMux()
 
-		// Handle non-API requests
-		if r.URL.Path == "/" || !isAPIPath(r.URL.Path) {
-			// If the file exists, serve it; otherwise, serve index.html
-			filePath := filepath.Join(uiDist, r.URL.Path)
-			if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
-				fs.ServeHTTP(w, r)
-				return
-			}
-			// Serve index.html for client-side routing
-			http.ServeFile(w, r, filepath.Join(uiDist, "index.html"))
-			return
-		}
-
-		// Fallback to default mux for legacy API paths
-		defaultMux := http.DefaultServeMux
-		defaultMux.ServeHTTP(w, r)
-	})
+	// Handle versioned API requests
+	mux.Handle("/api/", s.versionedHandler)
 
 	// Legacy (non-versioned) API endpoints for backward compatibility
-	// These will eventually be deprecated and removed
-	http.HandleFunc("/api/health", s.withMiddleware(s.handleHealth))
-	http.HandleFunc("/api/dns", s.withMiddleware(s.dnsHandler.HandleDNSLookup))
-	http.HandleFunc("/api/blacklist", s.withMiddleware(s.dnsblHandler.HandleDNSBLCheck))
+	mux.HandleFunc("GET /api/health", s.withMiddleware(s.handleHealth))
+	mux.HandleFunc("POST /api/dns", s.withMiddleware(s.dnsHandler.HandleDNSLookup))
+	mux.HandleFunc("POST /api/blacklist", s.withMiddleware(s.dnsblHandler.HandleDNSBLCheck))
+	mux.HandleFunc("POST /api/smtp", s.withMiddleware(s.smtpHandler.HandleSMTPCheck))
+	mux.HandleFunc("POST /api/email-auth", s.withMiddleware(s.emailAuthHandler.HandleEmailAuth))
+	mux.HandleFunc("POST /api/network-tools", s.withMiddleware(s.networkToolsHandler.HandleNetworkTools))
 
-	// Other API routes would be registered here for backward compatibility
-	// http.HandleFunc("/api/smtp", s.withMiddleware(s.smtpHandler.HandleSMTPCheck))
-	// ...
+	// Root handler to serve UI files and handle client-side routing
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Attempt to serve the requested file if it exists and is not a directory
+		filePath := filepath.Join(uiDist, r.URL.Path)
+		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+			http.ServeFile(w, r, filePath)
+			return
+		}
+		// Fallback to serving index.html for SPA routing
+		http.ServeFile(w, r, filepath.Join(uiDist, "index.html"))
+	})
 
 	log.Println("[api] Starting server on :8080, serving UI from", uiDist)
-	return http.ListenAndServe(":8080", nil)
+	return http.ListenAndServe(":8080", mux)
 }
 
 // isAPIPath checks if the URL path is an API endpoint
@@ -121,6 +152,18 @@ func isAPIPath(path string) bool {
 func (s *Server) withMiddleware(handler http.HandlerFunc) http.HandlerFunc {
 	// Apply middleware in order: logging, rate limiting
 	return s.logger.Log(s.rateLimiter.Limit(handler))
+}
+
+// withValidation applies validation middleware to handlers
+func (s *Server) withValidation(handler http.HandlerFunc, validateFunc func([]byte) (bool, map[string]interface{})) http.HandlerFunc {
+	// Apply validation middleware to the handler
+	return s.logger.Log(s.rateLimiter.Limit(s.validator.ValidateJSON(handler, validateFunc)))
+}
+
+// withParamValidation applies URL parameter validation middleware to handlers
+func (s *Server) withParamValidation(handler http.HandlerFunc, validateFunc func(map[string]string) (bool, map[string]interface{})) http.HandlerFunc {
+	// Apply validation middleware to the handler
+	return s.logger.Log(s.rateLimiter.Limit(s.validator.ValidateParams(handler, validateFunc)))
 }
 
 // handleHealth is a simple health check endpoint
@@ -137,14 +180,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle legacy API requests based on path
-	switch r.URL.Path {
-	case "/api/health":
+	// Handle legacy API requests based on path and method
+	switch {
+	case r.URL.Path == "/api/health" && r.Method == http.MethodGet:
 		s.withMiddleware(s.handleHealth)(w, r)
-	case "/api/dns":
+	case r.URL.Path == "/api/dns" && r.Method == http.MethodPost:
 		s.withMiddleware(s.dnsHandler.HandleDNSLookup)(w, r)
-	case "/api/blacklist":
+	case r.URL.Path == "/api/blacklist" && r.Method == http.MethodPost:
 		s.withMiddleware(s.dnsblHandler.HandleDNSBLCheck)(w, r)
+	case r.URL.Path == "/api/smtp" && r.Method == http.MethodPost:
+		s.withMiddleware(s.smtpHandler.HandleSMTPCheck)(w, r)
+	case r.URL.Path == "/api/email-auth" && r.Method == http.MethodPost:
+		s.withMiddleware(s.emailAuthHandler.HandleEmailAuth)(w, r)
+	case r.URL.Path == "/api/network-tools" && r.Method == http.MethodPost:
+		s.withMiddleware(s.networkToolsHandler.HandleNetworkTools)(w, r)
 	// Other endpoints would be added here
 	default:
 		http.NotFound(w, r)
@@ -155,12 +204,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func StartAPIServer(
 	dnsService input.DNSPort,
 	dnsblService input.DNSBLPort,
+	smtpService input.SMTPPort,
+	emailAuthService input.EmailAuthPort,
+	networkToolsService input.NetworkToolsPort,
 	// Other services
 	logger *logging.Logger,
 ) error {
 	server := NewServer(
 		dnsService,
 		dnsblService,
+		smtpService,
+		emailAuthService,
+		networkToolsService,
 		// Other services
 		logger,
 	)

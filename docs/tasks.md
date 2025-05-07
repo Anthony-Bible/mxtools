@@ -182,3 +182,28 @@ Comprehensive testing of workflows and user interactions
 90. [x] Document the hexagonal architecture approach in API layer (4h)
 
 **MILESTONE 14: Enhanced API Layer with Hexagonal Architecture**
+
+## API Endpoint Implementation Tasks
+
+### Remaining API Endpoints Implementation
+91. [x] Create SMTP API handler structure in internal/api/handlers/smtp_handler.go (4h)
+92. [x] Implement SMTP connection check endpoint (GET /api/v1/smtp/connect/{host}) (6h)
+93. [x] Implement SMTP STARTTLS check endpoint (GET /api/v1/smtp/starttls/{host}) (4h)
+94. [x] Implement SMTP open relay test endpoint (POST /api/v1/smtp/relay-test) (8h)
+95. [x] Create Email Authentication API handler in internal/api/handlers/emailauth_handler.go (4h)
+96. [x] Implement SPF record check endpoint (GET /api/v1/auth/spf/{domain}) (4h)
+97. [x] Implement DKIM record check endpoint (GET /api/v1/auth/dkim/{domain}/{selector}) (6h)
+98. [x] Implement DMARC record check endpoint (GET /api/v1/auth/dmarc/{domain}) (4h)
+99. [x] Create Network Tools API handler in internal/api/handlers/networktools_handler.go (4h)
+100. [x] Implement Ping endpoint (GET /api/v1/network/ping/{host}) (4h)
+101. [x] Implement Traceroute endpoint (GET /api/v1/network/traceroute/{host}) (6h)
+102. [x] Implement WHOIS lookup endpoint (GET /api/v1/network/whois/{domain}) (4h)
+103. [x] Add request validation for all new endpoints using validation middleware (8h)
+104. [x] Add comprehensive error handling for all new endpoints (6h)
+105. [x] Create OpenAPI/Swagger documentation for all new endpoints (8h)
+106. [x] Write unit tests for all new API endpoint handlers (16h)
+107. [x] Implement integration tests for new API endpoints (8h)
+108. [x] Register new handlers in API server's setupVersionedRoutes function (2h)
+109. [x] Update API versioning to include all new endpoints (2h)
+
+**MILESTONE 15: Remaining API Endpoints Implementation Complete**

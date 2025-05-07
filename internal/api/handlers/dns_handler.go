@@ -23,15 +23,6 @@ func NewDNSHandler(dnsService input.DNSPort) *DNSHandler {
 
 // HandleDNSLookup handles DNS lookup requests
 func (h *DNSHandler) HandleDNSLookup(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(models.APIError{
-			Error: "Method not allowed",
-			Code:  http.StatusMethodNotAllowed,
-		})
-		return
-	}
-
 	// Read and parse request body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {

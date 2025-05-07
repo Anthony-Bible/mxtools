@@ -23,22 +23,21 @@ func NewDNSBLHandler(dnsblService input.DNSBLPort) *DNSBLHandler {
 	}
 }
 
-// HandleDNSBLCheck handles blacklist check requests
+// HandleDNSBLCheck handles DNSBL check requests
 func (h *DNSBLHandler) HandleDNSBLCheck(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+	// Read and parse request body
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(models.APIError{
+			Error:   "Invalid request body",
+			Code:    http.StatusBadRequest,
+			Details: err.Error(),
+		})
 		return
 	}
 
 	var req models.CheckRequest
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid request body"})
-		return
-	}
-
 	if err := json.Unmarshal(body, &req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON"})

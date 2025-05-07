@@ -3,10 +3,10 @@ import DiagnosticForm from '../components/DiagnosticForm';
 import ResultView from '../components/ResultView';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorAlert from '../components/ErrorAlert';
-import { runDiagnostic } from '../api/diagnostics';
+import { dnsLookup, DNSResponse, ErrorResponse } from '../api/diagnostics';
 
 const DNS: React.FC = () => {
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<DNSResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,10 +15,11 @@ const DNS: React.FC = () => {
     setError(null);
     setResult(null);
     try {
-      const res = await runDiagnostic('dns', value);
+      const res = await dnsLookup(value);
       setResult(res);
     } catch (err: any) {
-      setError(err.toString());
+      const errorResponse = err as ErrorResponse;
+      setError(errorResponse.error || err.toString());
     } finally {
       setLoading(false);
     }
