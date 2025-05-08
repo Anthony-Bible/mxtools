@@ -202,7 +202,7 @@ export async function runDiagnostic(tool: string, input: string, token?: string)
 // DNS API Functions
 export async function dnsLookup(target: string): Promise<DNSResponse> {
   try {
-    const response = await axios.post(`${API_BASE}/dns`, { target });
+    const response = await axios.post(`${API_BASE}/dns/${encodeURIComponent(target)}`);
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);
@@ -212,7 +212,7 @@ export async function dnsLookup(target: string): Promise<DNSResponse> {
 // Blacklist API Functions
 export async function blacklistCheck(target: string): Promise<BlacklistResponse> {
   try {
-    const response = await axios.post(`${API_BASE}/blacklist`, { target });
+    const response = await axios.post(`${API_BASE}/blacklist/${encodeURIComponent(target)}` );
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);
@@ -229,18 +229,33 @@ export async function smtpCheck(target: string): Promise<SMTPResponse> {
   }
 }
 
-export async function smtpConnect(host: string): Promise<SMTPConnectionResponse> {
+export async function smtpConnect(host: string, port?: number, timeout?: string): Promise<SMTPConnectionResponse> {
   try {
-    const response = await axios.post(`${API_BASE}/smtp/connect/${encodeURIComponent(host)}`);
+    // Build the query parameters
+    const params = new URLSearchParams();
+    if (port !== undefined) params.append('port', port.toString());
+    if (timeout !== undefined) params.append('timeout', timeout);
+    
+    const url = `${API_BASE}/smtp/connect/${encodeURIComponent(host)}`;
+    const fullUrl = params.toString() ? `${url}?${params.toString()}` : url;
+    
+    const response = await axios.post(fullUrl);
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);
   }
 }
 
-export async function smtpStartTLS(host: string): Promise<Record<string, SMTPConnectionResponse>> {
+export async function smtpStartTLS(host: string, timeout?: string): Promise<Record<string, any>> {
   try {
-    const response = await axios.post(`${API_BASE}/smtp/starttls/${encodeURIComponent(host)}`);
+    // Build the query parameters
+    const params = new URLSearchParams();
+    if (timeout !== undefined) params.append('timeout', timeout);
+    
+    const url = `${API_BASE}/smtp/starttls/${encodeURIComponent(host)}`;
+    const fullUrl = params.toString() ? `${url}?${params.toString()}` : url;
+    
+    const response = await axios.post(fullUrl);
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);
@@ -266,11 +281,14 @@ export async function spfCheck(domain: string): Promise<SPFResponse> {
   }
 }
 
-export async function dkimCheck(domain: string, selector: string): Promise<DKIMResponse> {
+export async function dkimCheck(domain: string, selector?: string): Promise<DKIMResponse> {
   try {
-    const response = await axios.post(
-      `${API_BASE}/auth/dkim/${encodeURIComponent(domain)}/${encodeURIComponent(selector)}`
-    );
+    // If selector is provided, include it in the URL, otherwise the backend will use defaults
+    const url = selector 
+      ? `${API_BASE}/auth/dkim/${encodeURIComponent(domain)}/${encodeURIComponent(selector)}`
+      : `${API_BASE}/auth/dkim/${encodeURIComponent(domain)}`;
+    
+    const response = await axios.post(url);
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);

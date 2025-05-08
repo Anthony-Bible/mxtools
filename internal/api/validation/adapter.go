@@ -2,7 +2,9 @@ package validation
 
 import (
 	"encoding/json"
+	"fmt"
 	"mxclone/internal/api/models"
+	"net"
 )
 
 // JSONValidator adapts the validation functions to be used with the middleware
@@ -127,6 +129,22 @@ func (v *ParamValidator) ValidateHostParam(params map[string]string) (bool, map[
 	req := &models.CheckRequest{Target: host}
 	result := ValidateSMTPRequest(req)
 	return result.Valid, formatErrors(result)
+}
+
+// ValidateIPParam validates if the given parameter is a valid IP address
+func (v *ParamValidator) ValidateIPParam(params map[string]string) (bool, map[string]interface{}) {
+	ip, exists := params["ip"]
+	errors := make(map[string]interface{})
+
+	if !exists || ip == "" {
+		errors["ip"] = "IP parameter is missing"
+		return false, errors
+	}
+	if net.ParseIP(ip) == nil {
+		errors["ip"] = fmt.Sprintf("Invalid IP address: %s", ip)
+		return false, errors
+	}
+	return true, nil
 }
 
 // ValidateDKIMParams validates domain and selector parameters for DKIM checks

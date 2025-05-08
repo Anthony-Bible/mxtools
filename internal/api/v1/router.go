@@ -67,8 +67,35 @@ func (r *Router) setupRoutes() {
 	// DNS routes - POST method
 	r.mux.HandleFunc("POST /dns", r.withValidation(r.dnsHandler.HandleDNSLookup, r.jsonValidator.ValidateDNSRequestJSON))
 
+	// DNS route with path parameter
+	r.mux.HandleFunc("POST /dns/{domain}", func(w http.ResponseWriter, req *http.Request) {
+		domain := req.PathValue("domain")
+		params := map[string]string{"domain": domain}
+		valid, errs := r.paramValidator.ValidateDomainParam(params)
+		if !valid {
+			r.errorHandler.HandleValidationError(w, "Invalid domain parameter", errs)
+			return
+		}
+		r.dnsHandler.HandleDNSLookup(w, req)
+	})
+
 	// Blacklist routes - POST method
 	r.mux.HandleFunc("POST /blacklist", r.withValidation(r.dnsblHandler.HandleDNSBLCheck, r.jsonValidator.ValidateBlacklistRequestJSON))
+
+	// Blacklist route with path parameter
+	r.mux.HandleFunc("POST /blacklist/{target}", func(w http.ResponseWriter, req *http.Request) {
+		target := req.PathValue("target")
+		// Target can be either a domain or an IP address
+		validDomain, _ := r.paramValidator.ValidateDomainParam(map[string]string{"domain": target})
+		validIP, _ := r.paramValidator.ValidateIPParam(map[string]string{"ip": target})
+
+		if !validDomain && !validIP {
+			r.errorHandler.HandleValidationError(w, "Invalid target parameter (must be a valid domain or IP address)", nil)
+			return
+		}
+
+		r.dnsblHandler.HandleDNSBLCheck(w, req)
+	})
 
 	// SMTP routes
 	r.mux.HandleFunc("POST /smtp/connect/{host}", func(w http.ResponseWriter, req *http.Request) {

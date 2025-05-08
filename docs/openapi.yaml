@@ -1,1030 +1,814 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: MXClone API
-  description: API for MXToolbox clone providing DNS, blacklist, SMTP, email authentication, and network diagnostics
+  title: OpenAPI Specification
   version: 1.0.0
-  contact:
-    name: MXClone Team
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-
-servers:
-  - url: http://localhost:8080/api/v1
-    description: Local development server (versioned API)
-  - url: http://localhost:8080/api
-    description: Local development server (legacy API)
-
-tags:
-  - name: dns
-    description: DNS lookup operations
-  - name: blacklist
-    description: IP and domain blacklist checking
-  - name: smtp
-    description: SMTP server diagnostics
-  - name: email-auth
-    description: Email authentication (SPF, DKIM, DMARC)
-  - name: network
-    description: Network tools (ping, traceroute, WHOIS)
-  - name: health
-    description: System health and status
-
+  description: "OpenAPI spec for network and email diagnostic tools, covering SMTP, DNS, authentication, and network diagnostics."
 paths:
-  # Health endpoint
-  /api/v1/health:
-    get:
+  /api/v1/smtp/connect/{host}:
+    post:
+      operationId: connect_smtp
       tags:
-        - health
-      summary: Check API health
-      description: Returns the health status of the API
-      operationId: getHealth
+        - smtp
+      summary: /api/v1/smtp/connect/{host}
+      description: Establishes an SMTP connection to the specified host and port
       responses:
-        '200':
-          description: Successful operation
+        "200":
           content:
             application/json:
               schema:
                 type: object
+                description: Details of the SMTP connection attempt.
                 properties:
-                  status:
+                  host:
                     type: string
-                    example: ok
-                  version:
+                    description: The target host for the SMTP connection.
+                  port:
+                    type: string # Changed from integer
+                    description: The port used for the SMTP connection (e.g., "25", "587").
+                  connected:
+                    type: boolean
+                    description: Indicates if the SMTP connection was successful.
+                  supports_start_tls: # Renamed from supportsStartTLS
+                    type: boolean
+                    description: Indicates if the SMTP server supports STARTTLS.
+                  error:
                     type: string
-                    example: v1
-
-  # DNS endpoints
-  /api/v1/dns:
-    post:
-      tags:
-        - dns
-      summary: Perform DNS lookups
-      description: Performs DNS lookups for multiple record types
-      operationId: dnsLookup
-      requestBody:
-        description: Domain to check
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CheckRequest'
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DNSResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  # Blacklist endpoints
-  /api/v1/blacklist:
-    post:
-      tags:
-        - blacklist
-      summary: Check IP or domain against blacklists
-      description: Checks if an IP or domain is listed in DNS blacklists
-      operationId: blacklistCheck
-      requestBody:
-        description: IP or domain to check
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CheckRequest'
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BlacklistResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  # SMTP endpoints
-  /api/v1/smtp:
-    post:
-      tags:
-        - smtp
-      summary: Check SMTP server
-      description: Performs comprehensive SMTP server checks for a domain
-      operationId: smtpCheck
-      requestBody:
-        description: Domain to check
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CheckRequest'
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SMTPResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  
-  /api/v1/smtp/connect/{host}:
-    post:
-      tags:
-        - smtp
-      summary: Test SMTP connection
-      description: Tests basic SMTP connectivity to a server
-      operationId: smtpConnect
+                    description: Error message if the connection failed or an issue occurred.
+                required:
+                  - host
+                  - port
+                  - connected
+                  - supports_start_tls # Updated
+                  - error
+          description: ""
+          headers: {}
+      security: []
       parameters:
         - name: host
           in: path
-          description: Domain or IP of SMTP server
           required: true
+          description: The host to connect to (e.g., domain.com or mail.domain.com).
           schema:
             type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SMTPConnectionResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  
+        - name: port
+          in: query
+          required: false
+          description: The port number for the SMTP connection (e.g., "25", "587", "465"). Defaults to "25" if not provided.
+          schema:
+            type: string
   /api/v1/smtp/starttls/{host}:
     post:
+      operationId: check_start_tls
       tags:
         - smtp
-      summary: Test STARTTLS support
-      description: Tests if an SMTP server supports STARTTLS upgrade
-      operationId: smtpStartTLS
+      summary: /api/v1/smtp/starttls/{host}
+      description: Checks STARTTLS support for a given host by connecting to its MX records.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Results of STARTTLS check for the host's MX records.
+                properties:
+                  host:
+                    type: string
+                    description: The target host for which STARTTLS support was checked.
+                  mx_records: # Renamed from mxRecords
+                    type: array
+                    description: List of MX records found for the host.
+                    items:
+                      type: string
+                      description: An MX record.
+                  connection_status: # Renamed from connectionStatus
+                    type: object
+                    description: Connection status for each MX server. The keys are identifiers for the MX servers.
+                    properties:
+                      mx_server_1: # Renamed from alt1.aspmx.l.google.com
+                        type: object
+                        description: Connection and STARTTLS status for an individual MX server.
+                        properties:
+                          host:
+                            type: string
+                            description: The MX server hostname.
+                          port:
+                            type: string # Changed from integer
+                            description: The port used to connect to the MX server (e.g., "25", "587").
+                          connected:
+                            type: boolean
+                            description: Indicates if connection to the MX server was successful.
+                          supports_start_tls: # Renamed from supportsStartTLS
+                            type: boolean
+                            description: Indicates if the MX server supports STARTTLS.
+                          error:
+                            type: string
+                            description: Error message if connection or STARTTLS check failed for this MX server.
+                        required:
+                          - host
+                          - port
+                          - connected
+                          - supports_start_tls # Updated
+                          - error
+                      mx_server_2: # Renamed from alt2.aspmx.l.google.com
+                        type: object
+                        description: Connection and STARTTLS status for an individual MX server.
+                        properties:
+                          host:
+                            type: string
+                            description: The MX server hostname.
+                          port:
+                            type: string # Changed from integer
+                            description: The port used to connect to the MX server (e.g., "25", "587").
+                          connected:
+                            type: boolean
+                            description: Indicates if connection to the MX server was successful.
+                          supports_start_tls: # Renamed from supportsStartTLS
+                            type: boolean
+                            description: Indicates if the MX server supports STARTTLS.
+                          error:
+                            type: string
+                            description: Error message if connection or STARTTLS check failed for this MX server.
+                        required:
+                          - host
+                          - port
+                          - connected
+                          - supports_start_tls # Updated
+                          - error
+                      mx_server_3: # Renamed from aspmx.l.google.com
+                        type: object
+                        description: Connection and STARTTLS status for an individual MX server.
+                        properties:
+                          host:
+                            type: string
+                            description: The MX server hostname.
+                          port:
+                            type: string # Changed from integer
+                            description: The port used to connect to the MX server (e.g., "25", "587").
+                          connected:
+                            type: boolean
+                            description: Indicates if connection to the MX server was successful.
+                          supports_start_tls: # Renamed from supportsStartTLS
+                            type: boolean
+                            description: Indicates if the MX server supports STARTTLS.
+                          error:
+                            type: string
+                            description: Error message if connection or STARTTLS check failed for this MX server.
+                        required:
+                          - host
+                          - port
+                          - connected
+                          - supports_start_tls # Updated
+                          - error
+                      mx_server_4: # Renamed from aspmx2.googlemail.com
+                        type: object
+                        description: Connection and STARTTLS status for an individual MX server.
+                        properties:
+                          host:
+                            type: string
+                            description: The MX server hostname.
+                          port:
+                            type: string # Changed from integer
+                            description: The port used to connect to the MX server (e.g., "25", "587").
+                          connected:
+                            type: boolean
+                            description: Indicates if connection to the MX server was successful.
+                          supports_start_tls: # Renamed from supportsStartTLS
+                            type: boolean
+                            description: Indicates if the MX server supports STARTTLS.
+                          error:
+                            type: string
+                            description: Error message if connection or STARTTLS check failed for this MX server.
+                        required:
+                          - host
+                          - port
+                          - connected
+                          - supports_start_tls # Updated
+                          - error
+                      mx_server_5: # Renamed from aspmx3.googlemail.com
+                        type: object
+                        description: Connection and STARTTLS status for an individual MX server.
+                        properties:
+                          host:
+                            type: string
+                            description: The MX server hostname.
+                          port:
+                            type: string # Changed from integer
+                            description: The port used to connect to the MX server (e.g., "25", "587").
+                          connected:
+                            type: boolean
+                            description: Indicates if connection to the MX server was successful.
+                          supports_start_tls: # Renamed from supportsStartTLS
+                            type: boolean
+                            description: Indicates if the MX server supports STARTTLS.
+                          error:
+                            type: string
+                            description: Error message if connection or STARTTLS check failed for this MX server.
+                        required:
+                          - host
+                          - port
+                          - connected
+                          - supports_start_tls # Updated
+                          - error
+                    required:
+                      - mx_server_1 # Updated
+                      - mx_server_2 # Updated
+                      - mx_server_3 # Updated
+                      - mx_server_4 # Updated
+                      - mx_server_5 # Updated
+                required:
+                  - host
+                  - mx_records # Updated
+                  - connection_status # Updated
+          description: ""
+          headers: {}
+      security: []
       parameters:
         - name: host
           in: path
-          description: Domain or IP of SMTP server
           required: true
+          description: The host (domain) for which to check STARTTLS support on its MX records.
           schema:
             type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SMTPStartTLSResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  /api/v1/smtp/relay-test:
+  /api/v1/auth/spf/{host}:
     post:
+      operationId: get_spf_record
       tags:
-        - smtp
-      summary: Test for open relay
-      description: Tests if an SMTP server is configured as an open relay
-      operationId: smtpRelayTest
-      requestBody:
-        description: SMTP relay test parameters
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SMTPRelayTestRequest'
+        - auth
+      summary: /api/v1/auth/spf/{host}
+      description: Retrieves SPF (Sender Policy Framework) record for the given host.
       responses:
-        '200':
-          description: Successful operation
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SMTPRelayTestResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  # Email Authentication endpoints
-  /api/v1/auth/spf/{domain}:
-    post:
-      tags:
-        - email-auth
-      summary: Check SPF record
-      description: Validates SPF record for a domain
-      operationId: spfCheck
+                type: object
+                description: Details of the SPF record check.
+                properties:
+                  domain:
+                    type: string
+                    description: The domain for which the SPF record was checked.
+                  has_record: # Renamed from hasRecord
+                    type: boolean
+                    description: Indicates if an SPF record was found.
+                  record:
+                    type: string
+                    description: The raw SPF record string.
+                  is_valid: # Renamed from isValid
+                    type: boolean
+                    description: Indicates if the SPF record is valid.
+                  mechanisms:
+                    type: array
+                    description: List of mechanisms found in the SPF record.
+                    items:
+                      type: string
+                      description: An SPF record mechanism.
+                required:
+                  - domain
+                  - has_record # Updated
+                  - record
+                  - is_valid # Updated
+                  - mechanisms
+          description: ""
+          headers: {}
+      security: []
       parameters:
-        - name: domain
+        - name: host
           in: path
-          description: Domain to check
           required: true
+          description: The domain for which to retrieve the SPF record.
           schema:
             type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SPFResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  /api/v1/auth/dkim/{domain}/{selector}:
+  /api/v1/auth/dmarc/{host}:
     post:
+      operationId: get_dmarc_record
       tags:
-        - email-auth
-      summary: Check DKIM record
-      description: Validates DKIM record for a domain and selector
-      operationId: dkimCheck
+        - auth
+      summary: /api/v1/auth/dmarc/{host}
+      description: Retrievesthe DMARC (Domain-based Message Authentication, Reporting & Conformance) record for the given host.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Details of the DMARC record check.
+                properties:
+                  domain:
+                    type: string
+                    description: The domain for which the DMARC record was checked.
+                  has_record: # Renamed from hasRecord
+                    type: boolean
+                    description: Indicates if a DMARC record was found.
+                  record:
+                    type: string
+                    description: The raw DMARC record string.
+                  is_valid: # Renamed from isValid
+                    type: boolean
+                    description: Indicates if the DMARC record is valid.
+                  policy:
+                    type: string
+                    description: The DMARC policy (e.g., none, quarantine, reject).
+                  percentage:
+                    type: integer
+                    description: The percentage of messages to which the DMARC policy applies.
+                required:
+                  - domain
+                  - has_record # Updated
+                  - record
+                  - is_valid # Updated
+                  - policy
+                  - percentage
+          description: ""
+          headers: {}
+      security: []
       parameters:
-        - name: domain
+        - name: host
           in: path
-          description: Domain to check
           required: true
+          description: The domain for which to retrieve the DMARC record.
+          schema:
+            type: string
+  /api/v1/dns/{host}:
+    post:
+      operationId: get_dns_records
+      tags:
+        - dns
+      summary: /api/v1/dns/{host}
+      description: Performs DNS lookups for various record types (A, AAAA, CNAME, MX, NS, SOA, TXT) for the specified host.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Collection of DNS records for the specified host.
+                properties:
+                  records:
+                    type: object
+                    description: DNS records categorized by type.
+                    properties:
+                      A:
+                        type: array
+                        description: List of A records.
+                        items:
+                          type: string
+                          description: An A record (IPv4 address).
+                      AAAA:
+                        type: array
+                        description: List of AAAA records.
+                        items:
+                          type: string
+                          description: An AAAA record (IPv6 address).
+                      CNAME:
+                        type: array
+                        description: List of CNAME records.
+                        items:
+                          type: string
+                          description: A CNAME record (canonical name).
+                      MX:
+                        type: array
+                        description: List of MX records.
+                        items:
+                          type: string
+                          description: An MX record (mail exchange).
+                      NS:
+                        type: array
+                        description: List of NS records.
+                        items:
+                          type: string
+                          description: An NS record (name server).
+                      SOA:
+                        type: array
+                        description: List of SOA records.
+                        items:
+                          type: string
+                          description: An SOA record (start of authority).
+                      TXT:
+                        type: array
+                        description: List of TXT records.
+                        items:
+                          type: string
+                          description: A TXT record (text).
+                    required:
+                      - A
+                      - AAAA
+                      - CNAME
+                      - MX
+                      - NS
+                      - SOA
+                      - TXT
+                required:
+                  - records
+          description: ""
+          headers: {}
+      security: []
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: The host (domain or subdomain) for which to perform DNS lookups.
+          schema:
+            type: string
+  /api/v1/blacklist/{host}:
+    post:
+      operationId: check_blacklist
+      tags:
+        - blacklist
+      summary: /api/v1/blacklist/{host}
+      description: Checks if the IP address of the given host is listed on common DNS-based blacklists.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Blacklist check results for the host's IP address.
+                properties:
+                  ip:
+                    type: string
+                    description: The IP address that was checked against blacklists.
+                  listed_on: # Renamed from listedOn
+                    type: object
+                    description: An object where keys are blacklist names and values indicate if listed.
+                  error:
+                    type: string
+                    description: Error message if the blacklist check failed.
+                required:
+                  - ip
+                  - listed_on # Updated
+                  - error
+          description: ""
+          headers: {}
+      security: []
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: The host (domain or IP address) to check against DNS blacklists.
+          schema:
+            type: string
+  /api/v1/network/ping/{host}:
+    post:
+      operationId: ping_host
+      tags:
+        - network
+      summary: /api/v1/network/ping/{host}
+      description: Pings the specified host to check network connectivity and measures round-trip times.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Results of the ping operation.
+                properties:
+                  tool:
+                    type: string
+                    description: Name of the tool used for pinging.
+                  target:
+                    type: string
+                    description: The target host that was pinged.
+                  ping_result: # Renamed from pingResult
+                    type: object
+                    description: Detailed results of the ping.
+                    properties:
+                      target:
+                        type: string
+                        description: The target host of the ping.
+                      resolved_ip: # Renamed from resolvedIP
+                        type: string
+                        description: The resolved IP address of the target.
+                      success:
+                        type: boolean
+                        description: Indicates if the ping was successful.
+                      rtts:
+                        type: array
+                        description: List of round-trip times for each packet.
+                        items:
+                          type: string
+                          description: Round-trip time for a packet.
+                      avg_rtt: # Renamed from avgRTT
+                        type: string
+                        description: Average round-trip time.
+                      min_rtt: # Renamed from minRTT
+                        type: string
+                        description: Minimum round-trip time.
+                      max_rtt: # Renamed from maxRTT
+                        type: string
+                        description: Maximum round-trip time.
+                      packets_sent: # Renamed from packetsSent
+                        type: integer
+                        description: Number of packets sent.
+                      packets_received: # Renamed from packetsReceived
+                        type: integer
+                        description: Number of packets received.
+                      packet_loss: # Renamed from packetLoss
+                        type: integer
+                        description: Percentage of packet loss.
+                    required:
+                      - target
+                      - resolved_ip # Updated
+                      - success
+                      - rtts
+                      - avg_rtt # Updated
+                      - min_rtt # Updated
+                      - max_rtt # Updated
+                      - packets_sent # Updated
+                      - packets_received # Updated
+                      - packet_loss # Updated
+                required:
+                  - tool
+                  - target
+                  - ping_result # Updated
+          description: ""
+          headers: {}
+      security: []
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: The host (domain or IP address) to ping.
+          schema:
+            type: string
+  /api/v1/network/traceroute/{host}:
+    post:
+      operationId: traceroute_host
+      tags:
+        - network
+      summary: /api/v1/network/traceroute/{host}
+      description: Traces the network path to the specified host, showing intermediate hops.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Results of the traceroute operation.
+                properties:
+                  tool:
+                    type: string
+                    description: Name of the tool used for traceroute.
+                  target:
+                    type: string
+                    description: The target host for the traceroute.
+                  traceroute_result: # Renamed from tracerouteResult
+                    type: object
+                    description: Detailed results of the traceroute.
+                    properties:
+                      target:
+                        type: string
+                        description: The target host of the traceroute.
+                      resolved_ip: # Renamed from resolvedIP
+                        type: string
+                        description: The resolved IP address of the target.
+                      hops:
+                        type: array
+                        description: List of hops in the traceroute path.
+                        items:
+                          type: object
+                          description: Details of a single hop in the traceroute.
+                          properties:
+                            number:
+                              type: integer
+                              description: Hop number.
+                            ip:
+                              type: string
+                              description: IP address of the hop.
+                            hostname:
+                              type: string
+                              description: Hostname of the hop (if resolved).
+                            rtt:
+                              type: string
+                              description: Round-trip time to the hop.
+                          required:
+                            - number
+                            - ip
+                            - hostname
+                            - rtt
+                      target_reached: # Renamed from targetReached
+                        type: boolean
+                        description: Indicates if the target was reached.
+                    required:
+                      - target
+                      - resolved_ip # Updated
+                      - hops
+                      - target_reached # Updated
+                required:
+                  - tool
+                  - target
+                  - traceroute_result # Updated
+          description: ""
+          headers: {}
+      security: []
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: The host (domain or IP address) to trace the route to.
+          schema:
+            type: string
+  /api/v1/network/whois/{host}:
+    post:
+      operationId: get_whois_info
+      tags:
+        - network
+      summary: /api/v1/network/whois/{host}
+      description: Retrieves WHOIS information for the specified domain, including registrar and registration dates.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Results of the WHOIS lookup.
+                properties:
+                  tool:
+                    type: string
+                    description: Name of the tool used for WHOIS lookup.
+                  target:
+                    type: string
+                    description: The target domain for the WHOIS lookup.
+                  whois_result: # Renamed from whoisResult
+                    type: object
+                    description: Detailed WHOIS information.
+                    properties:
+                      target:
+                        type: string
+                        description: The target domain of the WHOIS lookup.
+                      registrar:
+                        type: string
+                        description: Registrar of the domain.
+                      created_date: # Renamed from createdDate
+                        type: string
+                        description: Creation date of the domain registration.
+                      expiration_date: # Renamed from expirationDate
+                        type: string
+                        description: Expiration date of the domain registration.
+                      name_servers: # Renamed from nameServers
+                        type: array
+                        description: List of name servers for the domain.
+                        items:
+                          type: string
+                          description: A name server.
+                      raw_data: # Renamed from rawData
+                        type: string
+                        description: Raw WHOIS data.
+                    required:
+                      - target
+                      - registrar
+                      - created_date # Updated
+                      - expiration_date # Updated
+                      - name_servers # Updated
+                      - raw_data # Updated
+                required:
+                  - tool
+                  - target
+                  - whois_result # Updated
+          description: ""
+          headers: {}
+      security: []
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: "The host (domain name) for which to retrieve WHOIS information. Note: This path parameter is used as the primary target. The 'domain' query parameter can be used alternatively if needed, but the path parameter takes precedence."
+          schema:
+            type: string
+        - name: domain
+          in: query
+          required: false
+          description: "The domain name for which to retrieve WHOIS information. This is an alternative to the path parameter if a different target is needed for WHOIS specifically."
+          schema:
+            type: string
+  /api/v1/auth/dkim/{host}:
+    post:
+      operationId: get_dkim_records
+      tags:
+        - auth
+      summary: /api/v1/auth/dkim/{host}
+      description: Checks for DKIM (DomainKeys Identified Mail) records for the given host using common selectors (mail and google).
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Results of DKIM record checks for common selectors.
+                properties:
+                  domain:
+                    type: string
+                    description: The domain for which DKIM records were checked.
+                  results:
+                    type: array
+                    description: List of DKIM check results for each selector.
+                    items:
+                      type: object
+                      description: DKIM check result for a specific selector.
+                      properties:
+                        domain:
+                          type: string
+                          description: The domain checked.
+                        selector:
+                          type: string
+                          description: The DKIM selector used.
+                        has_records: # Renamed from hasRecords
+                          type: boolean
+                          description: Indicates if DKIM records were found for this selector.
+                        is_valid: # Renamed from isValid
+                          type: boolean
+                          description: Indicates if the found DKIM records are valid.
+                        error:
+                          type: string
+                          description: Error message if the check failed for this selector.
+                      required:
+                        - domain
+                        - selector
+                        - has_records # Updated
+                        - is_valid # Updated
+                        - error
+                  is_valid: # Renamed from isValid
+                    type: boolean
+                    description: Overall DKIM validity status (e.g., if at least one selector is valid).
+                  selectors:
+                    type: array
+                    description: List of selectors that were checked.
+                    items:
+                      type: string
+                      description: A DKIM selector.
+                required:
+                  - domain
+                  - results
+                  - is_valid # Updated
+                  - selectors
+          description: ""
+          headers: {}
+      security: []
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: The domain for which to check DKIM records using common selectors.
+          schema:
+            type: string
+  /api/v1/auth/dkim/{host}/{selector}:
+    post:
+      operationId: get_dkim_record_by_selector
+      tags:
+        - auth
+      summary: /api/v1/auth/dkim/{host}/{selector}
+      description: Retrieves and validates the DKIM (DomainKeys Identified Mail) record for the given host and specific selector.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Details of the DKIM record check for a specific selector.
+                properties:
+                  domain:
+                    type: string
+                    description: The domain for which the DKIM record was checked.
+                  selector:
+                    type: string
+                    description: The specific DKIM selector used.
+                  has_records: # Renamed from hasRecords
+                    type: boolean
+                    description: Indicates if DKIM records were found for this selector.
+                  records: # This was 'records', assuming it might contain multiple records or a structured record.
+                    type: object # Changed from specific 'google' to generic object
+                    description: The DKIM record(s) found. Structure may vary.
+                    properties:
+                      # Example property, actual structure might differ
+                      record_value:
+                        type: string
+                        description: The value of the DKIM record.
+                    # 'required' for this sub-object would depend on actual known structure
+                    # For now, let's assume no specific sub-properties are always required
+                    # required:
+                    #   - record_value
+                  is_valid: # Renamed from isValid
+                    type: boolean
+                    description: Indicates if the found DKIM record is valid.
+                required:
+                  - domain
+                  - selector
+                  - has_records # Updated
+                  - records
+                  - is_valid # Updated
+          description: ""
+          headers: {}
+      security: []
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: The domain for which to retrieve the DKIM record.
           schema:
             type: string
         - name: selector
           in: path
-          description: DKIM selector
           required: true
+          description: The specific DKIM selector to use for the lookup.
           schema:
             type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DKIMResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  /api/v1/auth/dmarc/{domain}:
-    post:
-      tags:
-        - email-auth
-      summary: Check DMARC record
-      description: Validates DMARC record for a domain
-      operationId: dmarcCheck
-      parameters:
-        - name: domain
-          in: path
-          description: Domain to check
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DMARCResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  # Network Tools endpoints
-  /api/v1/network/ping/{host}:
-    post:
-      tags:
-        - network
-      summary: Ping host
-      description: Sends ICMP echo requests to a host
-      operationId: pingHost
-      parameters:
-        - name: host
-          in: path
-          description: Host to ping
-          required: true
-          schema:
-            type: string
-        - name: count
-          in: query
-          description: Number of ping packets to send
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 20
-            default: 4
-        - name: timeout
-          in: query
-          description: Timeout in seconds
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 60
-            default: 10
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PingResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  /api/v1/network/traceroute/{host}:
-    post:
-      tags:
-        - network
-      summary: Traceroute to host
-      description: Performs traceroute to a host
-      operationId: tracerouteHost
-      parameters:
-        - name: host
-          in: path
-          description: Host to trace
-          required: true
-          schema:
-            type: string
-        - name: maxHops
-          in: query
-          description: Maximum number of hops
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 64
-            default: 30
-        - name: timeout
-          in: query
-          description: Timeout in seconds
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 60
-            default: 30
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TracerouteResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-                
-  /api/v1/network/whois/{domain}:
-    post:
-      tags:
-        - network
-      summary: WHOIS lookup
-      description: Performs WHOIS lookup for a domain
-      operationId: whoisLookup
-      parameters:
-        - name: domain
-          in: path
-          description: Domain to lookup
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WHOISResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-components:
-  schemas:
-    CheckRequest:
-      type: object
-      required:
-        - target
-      properties:
-        target:
-          type: string
-          description: Domain, IP, or other target to check
-          example: example.com
-        option:
-          type: string
-          description: Optional parameter for specific checks
-          example: mx
-
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          description: Error message
-          example: Invalid domain name
-        code:
-          type: integer
-          description: HTTP status code
-          example: 400
-        type:
-          type: string
-          description: Type of error
-          example: validation_error
-        details:
-          type: string
-          description: Additional error details
-          example: Domain name cannot contain spaces
-        validations:
-          type: object
-          additionalProperties: true
-          description: Validation errors by field
-          example:
-            target: "invalid domain format"
-
-    ValidationError:
-      type: object
-      properties:
-        field:
-          type: string
-          description: Field that failed validation
-          example: target
-        message:
-          type: string
-          description: Validation error message
-          example: invalid domain name format
-
-    ValidationResult:
-      type: object
-      properties:
-        valid:
-          type: boolean
-          description: Whether the validation passed
-        errors:
-          type: array
-          items:
-            $ref: '#/components/schemas/ValidationError'
-
-    DNSResponse:
-      type: object
-      properties:
-        records:
-          type: object
-          additionalProperties: true
-          description: DNS records by type
-          example:
-            A: ["192.0.2.1"]
-            MX: ["10 mail.example.com."]
-            TXT: ["v=spf1 include:_spf.example.com ~all"]
-        timing:
-          type: string
-          description: Time taken for the DNS lookups
-          example: 245.3ms
-        error:
-          type: string
-          description: Error message, if any
-          example: timeout on NS lookup
-
-    BlacklistResponse:
-      type: object
-      properties:
-        ip:
-          type: string
-          description: IP address that was checked
-          example: 192.0.2.1
-        listedOn:
-          type: object
-          additionalProperties: true
-          description: Results by blacklist zone
-          example:
-            "bl.spamcop.net": "Listed - see details at spamcop.net"
-            "dnsbl.sorbs.net": "Listed as suspicious source"
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    # SMTP Schemas
-    SMTPResponse:
-      type: object
-      properties:
-        connected:
-          type: boolean
-          description: Whether a connection could be established
-          example: true
-        supportsStartTLS:
-          type: boolean
-          description: Whether the server supports STARTTLS
-          example: true
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    SMTPConnectionResponse:
-      type: object
-      properties:
-        host:
-          type: string
-          description: Host that was checked
-          example: smtp.example.com
-        port:
-          type: integer
-          description: Port that was checked
-          example: 25
-        connected:
-          type: boolean
-          description: Whether a connection could be established
-          example: true
-        latency:
-          type: string
-          description: Connection latency
-          example: 45.3ms
-        supportsStartTLS:
-          type: boolean
-          description: Whether the server supports STARTTLS
-          example: true
-        authMethods:
-          type: array
-          description: Supported authentication methods
-          items:
-            type: string
-            example: LOGIN
-        banner:
-          type: string
-          description: SMTP banner message
-          example: 220 smtp.example.com ESMTP Service ready
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    SMTPStartTLSResponse:
-      type: object
-      properties:
-        host:
-          type: string
-          description: Host that was checked
-          example: example.com
-        mxRecords:
-          type: array
-          description: MX records for the domain
-          items:
-            type: string
-            example: smtp.example.com
-        connectionStatus:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/SMTPConnectionResponse'
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    SMTPRelayTestRequest:
-      type: object
-      required:
-        - host
-        - fromAddress
-        - toAddress
-      properties:
-        host:
-          type: string
-          description: Host to test
-          example: smtp.example.com
-        port:
-          type: integer
-          description: Port to connect to
-          default: 25
-          example: 25
-        fromAddress:
-          type: string
-          description: From email address
-          example: sender@example.com
-        toAddress:
-          type: string
-          description: To email address
-          example: recipient@example.net
-        timeout:
-          type: integer
-          description: Timeout in seconds
-          default: 10
-          example: 10
-        authentication:
-          type: boolean
-          description: Whether to use authentication
-          default: false
-          example: false
-        username:
-          type: string
-          description: Username for authentication
-          example: user
-        password:
-          type: string
-          description: Password for authentication
-          example: pass
-          
-    SMTPRelayTestResponse:
-      type: object
-      properties:
-        host:
-          type: string
-          description: Host that was tested
-          example: smtp.example.com
-        port:
-          type: integer
-          description: Port that was used
-          example: 25
-        isOpenRelay:
-          type: boolean
-          description: Whether the server is an open relay
-          example: false
-        authRequired:
-          type: boolean
-          description: Whether authentication is required
-          example: true
-        responseCode:
-          type: integer
-          description: SMTP response code
-          example: 550
-        responseText:
-          type: string
-          description: SMTP response text
-          example: Relay access denied
-        testDetails:
-          type: string
-          description: Details about the relay test
-          example: Server requires authentication before relaying mail
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    # Email Authentication Schemas
-    SPFResponse:
-      type: object
-      properties:
-        domain:
-          type: string
-          description: Domain that was checked
-          example: example.com
-        hasRecord:
-          type: boolean
-          description: Whether the domain has an SPF record
-          example: true
-        record:
-          type: string
-          description: The SPF record
-          example: v=spf1 include:_spf.example.com ~all
-        isValid:
-          type: boolean
-          description: Whether the SPF record is valid
-          example: true
-        mechanisms:
-          type: array
-          description: Parsed SPF mechanisms
-          items:
-            type: string
-            example: include:_spf.example.com
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    DKIMResponse:
-      type: object
-      properties:
-        domain:
-          type: string
-          description: Domain that was checked
-          example: example.com
-        selector:
-          type: string
-          description: DKIM selector
-          example: default
-        hasRecords:
-          type: boolean
-          description: Whether DKIM records were found
-          example: true
-        records:
-          type: object
-          additionalProperties: true
-          description: DKIM records
-          example:
-            "default._domainkey.example.com": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0..."
-        isValid:
-          type: boolean
-          description: Whether the DKIM records are valid
-          example: true
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    DMARCResponse:
-      type: object
-      properties:
-        domain:
-          type: string
-          description: Domain that was checked
-          example: example.com
-        hasRecord:
-          type: boolean
-          description: Whether a DMARC record was found
-          example: true
-        record:
-          type: string
-          description: The DMARC record
-          example: v=DMARC1; p=reject; sp=none; pct=100; rua=mailto:dmarc@example.com
-        isValid:
-          type: boolean
-          description: Whether the DMARC record is valid
-          example: true
-        policy:
-          type: string
-          description: DMARC policy
-          example: reject
-        subdomainPolicy:
-          type: string
-          description: DMARC subdomain policy
-          example: none
-        percentage:
-          type: integer
-          description: DMARC percentage
-          example: 100
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    # Network Tools Schemas
-    PingResponse:
-      type: object
-      properties:
-        target:
-          type: string
-          description: Target that was pinged
-          example: example.com
-        resolvedIP:
-          type: string
-          description: Resolved IP address
-          example: 192.0.2.1
-        success:
-          type: boolean
-          description: Whether the ping was successful
-          example: true
-        rtts:
-          type: array
-          description: Round-trip times for each ping
-          items:
-            type: string
-            example: 24.5ms
-        avgRTT:
-          type: string
-          description: Average round-trip time
-          example: 25.3ms
-        minRTT:
-          type: string
-          description: Minimum round-trip time
-          example: 24.2ms
-        maxRTT:
-          type: string
-          description: Maximum round-trip time
-          example: 26.7ms
-        packetsSent:
-          type: integer
-          description: Number of packets sent
-          example: 4
-        packetsReceived:
-          type: integer
-          description: Number of packets received
-          example: 4
-        packetLoss:
-          type: number
-          description: Percentage of packet loss
-          example: 0
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-        rawOutput:
-          type: string
-          description: Raw output from ping command
-          example: "PING example.com (192.0.2.1): 56 data bytes..."
-          
-    TracerouteHopResponse:
-      type: object
-      properties:
-        number:
-          type: integer
-          description: Hop number
-          example: 1
-        ip:
-          type: string
-          description: IP address of the hop
-          example: 192.0.2.1
-        hostname:
-          type: string
-          description: Hostname of the hop
-          example: router.example.com
-        rtt:
-          type: string
-          description: Round-trip time
-          example: 12.3ms
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    TracerouteResponse:
-      type: object
-      properties:
-        target:
-          type: string
-          description: Target host
-          example: example.com
-        resolvedIP:
-          type: string
-          description: Resolved IP address
-          example: 192.0.2.1
-        hops:
-          type: array
-          description: Traceroute hops
-          items:
-            $ref: '#/components/schemas/TracerouteHopResponse'
-        targetReached:
-          type: boolean
-          description: Whether the target was reached
-          example: true
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-        rawOutput:
-          type: string
-          description: Raw output from traceroute command
-          example: traceroute to example.com (192.0.2.1), 30 hops max...
-          
-    WHOISResponse:
-      type: object
-      properties:
-        target:
-          type: string
-          description: Target domain or IP
-          example: example.com
-        registrar:
-          type: string
-          description: Domain registrar
-          example: Example Registrar, Inc.
-        createdDate:
-          type: string
-          description: Domain creation date
-          example: 1995-08-14T04:00:00Z
-        expirationDate:
-          type: string
-          description: Domain expiration date
-          example: 2024-08-13T04:00:00Z
-        nameServers:
-          type: array
-          items:
-            type: string
-            example: ns1.example.com
-          description: Domain name servers
-        rawData:
-          type: string
-          description: Raw WHOIS data
-          example: "Domain Name: EXAMPLE.COM\nRegistry Domain ID: 2336799_DOMAIN_COM-VRSN\n..."
-        error:
-          type: string
-          description: Error message, if any
-          example: null
-          
-    NetworkToolResult:
-      type: object
-      properties:
-        tool:
-          type: string
-          description: Tool that was used
-          example: ping
-        target:
-          type: string
-          description: Target that was checked
-          example: example.com
-        pingResult:
-          $ref: '#/components/schemas/PingResponse'
-        tracerouteResult:
-          $ref: '#/components/schemas/TracerouteResponse'
-        whoisResult:
-          $ref: '#/components/schemas/WHOISResponse'
-        error:
-          type: string
-          description: Error message, if any
-          example: null
+components: {}
