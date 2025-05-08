@@ -4,6 +4,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+RUN ls -la
 RUN CGO_ENABLED=0 GOOS=linux go build -o mxclone main.go
 
 FROM node:20 AS ui-builder
@@ -18,6 +19,7 @@ WORKDIR /app
 COPY --from=builder /app/mxclone ./mxclone
 COPY --from=ui-builder /ui/dist ./ui/dist
 COPY ui/public ./ui/public
+COPY --from=builder /app/docs/openapi.yaml ./docs/
 EXPOSE 8080
 ENV UI_DIST_PATH=/app/ui/dist
 CMD ["./mxclone", "api"]
