@@ -2,9 +2,17 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"mxclone/pkg/logging"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 )
 
 // APIEndpointDoc represents documentation for a specific API endpoint
@@ -45,21 +53,44 @@ type APIDocs struct {
 
 // DocsHandler handles API documentation requests
 type DocsHandler struct {
-	logger *logging.Logger
-	docs   *APIDocs
+	logger     *logging.Logger
+	docs       *APIDocs
+	specPath   string
+	openAPIDoc *v3.Document
 }
 
 // NewDocsHandler creates a new documentation handler
 func NewDocsHandler(logger *logging.Logger) *DocsHandler {
+	specPath := filepath.Join("docs", "openapi.yaml")
 	handler := &DocsHandler{
-		logger: logger,
-		docs:   createDocs(),
+		logger:   logger,
+		specPath: specPath,
 	}
+
+	// Load OpenAPI spec
+	doc, err := handler.loadOpenAPISpec()
+	if err != nil {
+		logger.Error("Failed to load OpenAPI spec. Documentation will be unavailable.", "error", err)
+		// No fallback to hardcoded docs, h.docs remains nil
+	} else {
+		handler.openAPIDoc = doc
+		handler.docs = handler.convertOpenAPIToAPIDocs()
+	}
+
 	return handler
 }
 
 // HandleDocs handles the API documentation endpoint
 func (h *DocsHandler) HandleDocs(w http.ResponseWriter, r *http.Request) {
+	// Check if docs is available
+	if h.docs == nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "API documentation is not available",
+		})
+		return
+	}
+
 	// Check if a specific group is requested
 	group := r.URL.Query().Get("group")
 	if group != "" {
@@ -75,6 +106,15 @@ func (h *DocsHandler) HandleDocs(w http.ResponseWriter, r *http.Request) {
 // handleGroupDocs returns documentation for a specific group
 func (h *DocsHandler) handleGroupDocs(w http.ResponseWriter, r *http.Request, group string) {
 	group = strings.ToLower(group)
+
+	// Check if docs is available before trying to access h.docs.Groups
+	if h.docs == nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": "API documentation is not available",
+		})
+		return
+	}
 
 	// Find the requested group
 	for _, g := range h.docs.Groups {
@@ -92,413 +132,315 @@ func (h *DocsHandler) handleGroupDocs(w http.ResponseWriter, r *http.Request, gr
 	})
 }
 
-// createDocs creates the API documentation
-func createDocs() *APIDocs {
-	docs := &APIDocs{
-		Version:     "v1",
-		Description: "MXClone API provides DNS, blacklist, SMTP, email authentication, and network diagnostics",
-		BaseURL:     "/api/v1",
-		Groups:      createGroups(),
+// loadOpenAPISpec loads and parses OpenAPI specification from file
+func (h *DocsHandler) loadOpenAPISpec() (*v3.Document, error) {
+	// Check if OpenAPI spec file exists
+	if _, err := os.Stat(h.specPath); os.IsNotExist(err) {
+		return nil, errors.New("OpenAPI specification file not found")
 	}
-	return docs
+
+	// Read the file contents
+	data, err := os.ReadFile(h.specPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read OpenAPI specification: %w", err)
+	}
+
+	// Parse OpenAPI document
+	document, err := libopenapi.NewDocument(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse OpenAPI document: %w", err)
+	}
+
+	// Get the model
+	v3Model, errs := document.BuildV3Model()
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("failed to build OpenAPI model: %v", errs)
+	}
+
+	return &v3Model.Model, nil
 }
 
-// createGroups creates documentation for all API groups
-func createGroups() []APIGroupDoc {
-	return []APIGroupDoc{
-		createDNSGroup(),
-		createBlacklistGroup(),
-		createSMTPGroup(),
-		createEmailAuthGroup(),
-		createNetworkToolsGroup(),
-		createHealthGroup(),
+// convertOpenAPIToAPIDocs converts OpenAPI spec to internal API docs format
+func (h *DocsHandler) convertOpenAPIToAPIDocs() *APIDocs {
+	doc := h.openAPIDoc
+
+	// Create base API documentation
+	apiDocs := &APIDocs{
+		Version:     doc.Info.Version,
+		Description: doc.Info.Description,
+		BaseURL:     getBaseURL(doc),
+		Groups:      []APIGroupDoc{},
 	}
+
+	// Group endpoints by tags
+	tagGroups := make(map[string][]APIEndpointDoc)
+	tagDescriptions := make(map[string]string)
+
+	// Extract tag descriptions
+	for _, tag := range doc.Tags {
+		tagDescriptions[tag.Name] = tag.Description
+	}
+
+	// Process paths and operations
+	pathKeys := doc.Paths.PathItems.KeysFromNewest()
+	for path := range pathKeys {
+		pathItem, _ := doc.Paths.PathItems.Get(path)
+		processPath(path, pathItem, tagGroups)
+	}
+
+	// Create API groups from tags
+	for tag, endpoints := range tagGroups {
+		description := tagDescriptions[tag]
+		if description == "" {
+			description = fmt.Sprintf("%s operations", tag)
+		}
+
+		apiDocs.Groups = append(apiDocs.Groups, APIGroupDoc{
+			Name:        tag,
+			Description: description,
+			Endpoints:   endpoints,
+		})
+	}
+
+	return apiDocs
 }
 
-// createDNSGroup creates documentation for DNS endpoints
-func createDNSGroup() APIGroupDoc {
-	return APIGroupDoc{
-		Name:        "dns",
-		Description: "DNS lookup operations",
-		Endpoints: []APIEndpointDoc{
-			{
-				Path:        "/dns",
-				Method:      "POST",
-				Description: "Perform DNS lookups for multiple record types",
-				Request: map[string]interface{}{
-					"target": "example.com",
-					"option": "mx",
-				},
-				Response: map[string]interface{}{
-					"records": map[string]interface{}{
-						"A":   []string{"192.0.2.1"},
-						"MX":  []string{"10 mail.example.com."},
-						"TXT": []string{"v=spf1 include:_spf.example.com ~all"},
-					},
-					"timing": "245.3ms",
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/dns -d '{\"target\":\"example.com\"}'",
-			},
-		},
+// processPath processes an OpenAPI path and adds endpoints to tag groups
+func processPath(path string, pathItem *v3.PathItem, tagGroups map[string][]APIEndpointDoc) {
+	// Process each HTTP method
+	methods := map[string]*v3.Operation{
+		"GET":    pathItem.Get,
+		"POST":   pathItem.Post,
+		"PUT":    pathItem.Put,
+		"DELETE": pathItem.Delete,
+		"PATCH":  pathItem.Patch,
 	}
-}
 
-// createBlacklistGroup creates documentation for blacklist endpoints
-func createBlacklistGroup() APIGroupDoc {
-	return APIGroupDoc{
-		Name:        "blacklist",
-		Description: "IP and domain blacklist checking",
-		Endpoints: []APIEndpointDoc{
-			{
-				Path:        "/blacklist",
-				Method:      "POST",
-				Description: "Check if an IP or domain is listed in DNS blacklists",
-				Request: map[string]interface{}{
-					"target": "192.0.2.1",
-				},
-				Response: map[string]interface{}{
-					"ip": "192.0.2.1",
-					"listedOn": map[string]string{
-						"bl.spamcop.net":  "Listed - see details at spamcop.net",
-						"dnsbl.sorbs.net": "Listed as suspicious source",
-					},
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/blacklist -d '{\"target\":\"192.0.2.1\"}'",
-			},
-		},
-	}
-}
+	for method, operation := range methods {
+		if operation != nil {
+			endpoint := createEndpointDoc(path, method, operation)
 
-// createSMTPGroup creates documentation for SMTP endpoints
-func createSMTPGroup() APIGroupDoc {
-	return APIGroupDoc{
-		Name:        "smtp",
-		Description: "SMTP server diagnostics",
-		Endpoints: []APIEndpointDoc{
-			{
-				Path:        "/smtp",
-				Method:      "POST",
-				Description: "Perform comprehensive SMTP server checks for a domain",
-				Request: map[string]interface{}{
-					"target": "example.com",
-				},
-				Response: map[string]interface{}{
-					"connected":        true,
-					"supportsStartTLS": true,
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/smtp -d '{\"target\":\"example.com\"}'",
-			},
-			{
-				Path:        "/smtp/connect/{host}",
-				Method:      "POST",
-				Description: "Test basic SMTP connectivity to a server",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "host",
-						In:          "path",
-						Description: "Domain or IP of SMTP server",
-						Required:    true,
-						Type:        "string",
-						Example:     "smtp.example.com",
-					},
-				},
-				Response: map[string]interface{}{
-					"host":             "smtp.example.com",
-					"port":             25,
-					"connected":        true,
-					"latency":          "45.3ms",
-					"supportsStartTLS": true,
-					"authMethods":      []string{"LOGIN", "PLAIN"},
-					"banner":           "220 smtp.example.com ESMTP Service ready",
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/smtp/connect/smtp.example.com",
-			},
-			{
-				Path:        "/smtp/starttls/{host}",
-				Method:      "POST",
-				Description: "Test if an SMTP server supports STARTTLS upgrade",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "host",
-						In:          "path",
-						Description: "Domain or IP of SMTP server",
-						Required:    true,
-						Type:        "string",
-						Example:     "smtp.example.com",
-					},
-				},
-				Response: map[string]interface{}{
-					"host":      "example.com",
-					"mxRecords": []string{"smtp.example.com"},
-					"connectionStatus": map[string]interface{}{
-						"smtp.example.com": map[string]interface{}{
-							"connected":        true,
-							"supportsStartTLS": true,
-						},
-					},
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/smtp/starttls/example.com",
-			},
-			{
-				Path:        "/smtp/relay-test",
-				Method:      "POST",
-				Description: "Test if an SMTP server is configured as an open relay",
-				Request: map[string]interface{}{
-					"host":           "smtp.example.com",
-					"fromAddress":    "sender@example.com",
-					"toAddress":      "recipient@example.net",
-					"authentication": false,
-				},
-				Response: map[string]interface{}{
-					"host":         "smtp.example.com",
-					"port":         25,
-					"isOpenRelay":  false,
-					"authRequired": true,
-					"responseCode": 550,
-					"responseText": "Relay access denied",
-					"testDetails":  "Server requires authentication before relaying mail",
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/smtp/relay-test -d '{\"host\":\"smtp.example.com\",\"fromAddress\":\"sender@example.com\",\"toAddress\":\"recipient@example.net\"}'",
-			},
-		},
+			// Add endpoint to each tag group
+			for _, tag := range operation.Tags {
+				if _, ok := tagGroups[tag]; !ok {
+					tagGroups[tag] = []APIEndpointDoc{}
+				}
+				tagGroups[tag] = append(tagGroups[tag], endpoint)
+			}
+		}
 	}
 }
 
-// createEmailAuthGroup creates documentation for email authentication endpoints
-func createEmailAuthGroup() APIGroupDoc {
-	return APIGroupDoc{
-		Name:        "email-auth",
-		Description: "Email authentication (SPF, DKIM, DMARC)",
-		Endpoints: []APIEndpointDoc{
-			{
-				Path:        "/auth/spf/{domain}",
-				Method:      "POST",
-				Description: "Validates SPF record for a domain",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "domain",
-						In:          "path",
-						Description: "Domain to check",
-						Required:    true,
-						Type:        "string",
-						Example:     "example.com",
-					},
-				},
-				Response: map[string]interface{}{
-					"domain":     "example.com",
-					"hasRecord":  true,
-					"record":     "v=spf1 include:_spf.example.com ~all",
-					"isValid":    true,
-					"mechanisms": []string{"include:_spf.example.com", "~all"},
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/auth/spf/example.com",
-			},
-			{
-				Path:        "/auth/dkim/{domain}/{selector}",
-				Method:      "POST",
-				Description: "Validates DKIM record for a domain and selector",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "domain",
-						In:          "path",
-						Description: "Domain to check",
-						Required:    true,
-						Type:        "string",
-						Example:     "example.com",
-					},
-					{
-						Name:        "selector",
-						In:          "path",
-						Description: "DKIM selector",
-						Required:    true,
-						Type:        "string",
-						Example:     "default",
-					},
-				},
-				Response: map[string]interface{}{
-					"domain":     "example.com",
-					"selector":   "default",
-					"hasRecords": true,
-					"records": map[string]string{
-						"default._domainkey.example.com": "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0...",
-					},
-					"isValid": true,
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/auth/dkim/example.com/default",
-			},
-			{
-				Path:        "/auth/dmarc/{domain}",
-				Method:      "POST",
-				Description: "Validates DMARC record for a domain",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "domain",
-						In:          "path",
-						Description: "Domain to check",
-						Required:    true,
-						Type:        "string",
-						Example:     "example.com",
-					},
-				},
-				Response: map[string]interface{}{
-					"domain":          "example.com",
-					"hasRecord":       true,
-					"record":          "v=DMARC1; p=reject; sp=none; pct=100; rua=mailto:dmarc@example.com",
-					"isValid":         true,
-					"policy":          "reject",
-					"subdomainPolicy": "none",
-					"percentage":      100,
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/auth/dmarc/example.com",
-			},
-		},
+// createEndpointDoc creates an API endpoint doc from OpenAPI operation
+func createEndpointDoc(path string, method string, operation *v3.Operation) APIEndpointDoc {
+	endpoint := APIEndpointDoc{
+		Path:        path,
+		Method:      method,
+		Description: operation.Description,
+		Parameters:  []APIParameterDoc{},
+	}
+
+	// Add parameters
+	for _, param := range operation.Parameters {
+		apiParam := APIParameterDoc{
+			Name:        param.Name,
+			In:          param.In,
+			Description: param.Description,
+			Required:    param.Required != nil && *param.Required,
+		}
+
+		// Extract parameter type
+		if param.Schema != nil {
+			schema := param.Schema.Schema()
+			if schema != nil && len(schema.Type) > 0 {
+				apiParam.Type = schema.Type[0]
+				exampleVal := getSchemaExample(schema)
+				if exampleVal != nil {
+					apiParam.Example = exampleVal
+				}
+			}
+		}
+
+		endpoint.Parameters = append(endpoint.Parameters, apiParam)
+	}
+
+	// Process request body
+	if operation.RequestBody != nil && operation.RequestBody.Content != nil {
+		contentKeys := operation.RequestBody.Content.KeysFromNewest()
+		for contentType := range contentKeys {
+			mediaType, _ := operation.RequestBody.Content.Get(contentType)
+
+			if contentType == "application/json" && mediaType.Schema != nil {
+				// Extract example from schema
+				schema := mediaType.Schema.Schema()
+				if schema != nil {
+					endpoint.Request = extractSchemaExample(schema)
+				}
+			}
+		}
+	}
+
+	// Process responses
+	if operation.Responses != nil && operation.Responses.Codes != nil {
+		statusCodes := operation.Responses.Codes.KeysFromNewest()
+		for statusCode := range statusCodes {
+			response, _ := operation.Responses.Codes.Get(statusCode)
+
+			// Check if it's a success response (2xx)
+			if strings.HasPrefix(statusCode, "2") && response.Content != nil {
+				contentTypes := response.Content.KeysFromNewest()
+				for contentType := range contentTypes {
+					mediaType, _ := response.Content.Get(contentType)
+
+					if contentType == "application/json" && mediaType.Schema != nil {
+						schema := mediaType.Schema.Schema()
+						if schema != nil {
+							endpoint.Response = extractSchemaExample(schema)
+							break // Just use the first successful response with JSON content
+						}
+					}
+				}
+				if endpoint.Response != nil {
+					break // Found a response, no need to check other status codes
+				}
+			}
+		}
+	}
+
+	// Create example curl command
+	endpoint.Example = createCurlExample(path, method, endpoint.Parameters, endpoint.Request)
+
+	return endpoint
+}
+
+// extractSchemaExample extracts example data from schema
+func extractSchemaExample(schema *base.Schema) interface{} {
+	if schema.Example != nil {
+		return schema.Example
+	}
+
+	// Create example based on schema type
+	if len(schema.Type) > 0 {
+		schemaType := schema.Type[0]
+		switch schemaType {
+		case "object":
+			if schema.Properties != nil {
+				example := make(map[string]interface{})
+				propKeys := schema.Properties.KeysFromNewest()
+				for name := range propKeys {
+					prop, _ := schema.Properties.Get(name)
+
+					propSchema := prop.Schema()
+					if propSchema != nil {
+						example[name] = getSchemaExample(propSchema)
+					}
+				}
+				return example
+			}
+		case "array":
+			if schema.Items != nil {
+				// Get schema from items
+				items := schema.Items.A
+				if items != nil {
+					itemSchema := items.Schema()
+					if itemSchema != nil {
+						// Return an array with a single example item
+						return []interface{}{getSchemaExample(itemSchema)}
+					}
+				}
+			}
+		}
+
+		return getDefaultExampleForType(schemaType)
+	}
+
+	return nil
+}
+
+// getSchemaExample gets an example value from a schema
+func getSchemaExample(schema *base.Schema) interface{} {
+	if schema.Example != nil {
+		return schema.Example
+	}
+
+	if len(schema.Type) > 0 {
+		return getDefaultExampleForType(schema.Type[0])
+	}
+
+	return nil
+}
+
+// getDefaultExampleForType returns a default example for a given type
+func getDefaultExampleForType(typeName string) interface{} {
+	switch typeName {
+	case "string":
+		return "example"
+	case "integer":
+		return 42
+	case "number":
+		return 42.0
+	case "boolean":
+		return true
+	case "array":
+		return []interface{}{}
+	case "object":
+		return map[string]interface{}{}
+	default:
+		return nil
 	}
 }
 
-// createNetworkToolsGroup creates documentation for network tools endpoints
-func createNetworkToolsGroup() APIGroupDoc {
-	return APIGroupDoc{
-		Name:        "network",
-		Description: "Network diagnostic tools (ping, traceroute, WHOIS)",
-		Endpoints: []APIEndpointDoc{
-			{
-				Path:        "/network/ping/{host}",
-				Method:      "POST",
-				Description: "Sends ICMP echo requests to a host",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "host",
-						In:          "path",
-						Description: "Host to ping",
-						Required:    true,
-						Type:        "string",
-						Example:     "example.com",
-					},
-					{
-						Name:        "count",
-						In:          "query",
-						Description: "Number of ping packets to send",
-						Required:    false,
-						Type:        "integer",
-						Example:     4,
-					},
-					{
-						Name:        "timeout",
-						In:          "query",
-						Description: "Timeout in seconds",
-						Required:    false,
-						Type:        "integer",
-						Example:     10,
-					},
-				},
-				Response: map[string]interface{}{
-					"target":          "example.com",
-					"resolvedIP":      "192.0.2.1",
-					"success":         true,
-					"rtts":            []string{"24.5ms", "25.1ms", "26.3ms", "25.2ms"},
-					"avgRTT":          "25.3ms",
-					"minRTT":          "24.5ms",
-					"maxRTT":          "26.3ms",
-					"packetsSent":     4,
-					"packetsReceived": 4,
-					"packetLoss":      0,
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/network/ping/example.com?count=4",
-			},
-			{
-				Path:        "/network/traceroute/{host}",
-				Method:      "POST",
-				Description: "Performs traceroute to a host",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "host",
-						In:          "path",
-						Description: "Host to trace",
-						Required:    true,
-						Type:        "string",
-						Example:     "example.com",
-					},
-					{
-						Name:        "maxHops",
-						In:          "query",
-						Description: "Maximum number of hops",
-						Required:    false,
-						Type:        "integer",
-						Example:     30,
-					},
-					{
-						Name:        "timeout",
-						In:          "query",
-						Description: "Timeout in seconds",
-						Required:    false,
-						Type:        "integer",
-						Example:     30,
-					},
-				},
-				Response: map[string]interface{}{
-					"target":     "example.com",
-					"resolvedIP": "192.0.2.1",
-					"hops": []map[string]interface{}{
-						{
-							"number":   1,
-							"ip":       "192.168.1.1",
-							"hostname": "router.local",
-							"rtt":      "2.3ms",
-						},
-						{
-							"number":   2,
-							"ip":       "203.0.113.1",
-							"hostname": "isp-router.example.net",
-							"rtt":      "14.7ms",
-						},
-					},
-					"targetReached": true,
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/network/traceroute/example.com?maxHops=30",
-			},
-			{
-				Path:        "/network/whois/{domain}",
-				Method:      "POST",
-				Description: "Performs WHOIS lookup for a domain",
-				Parameters: []APIParameterDoc{
-					{
-						Name:        "domain",
-						In:          "path",
-						Description: "Domain to lookup",
-						Required:    true,
-						Type:        "string",
-						Example:     "example.com",
-					},
-				},
-				Response: map[string]interface{}{
-					"target":         "example.com",
-					"registrar":      "Example Registrar, Inc.",
-					"createdDate":    "1995-08-14T04:00:00Z",
-					"expirationDate": "2024-08-13T04:00:00Z",
-					"nameServers":    []string{"ns1.example.com", "ns2.example.com"},
-				},
-				Example: "curl -X POST http://localhost:8080/api/v1/network/whois/example.com",
-			},
-		},
+// getBaseURL extracts base URL from OpenAPI document
+func getBaseURL(doc *v3.Document) string {
+	if len(doc.Servers) > 0 && doc.Servers[0].URL != "" {
+		// Extract path part from URL
+		url := doc.Servers[0].URL
+		parts := strings.Split(url, "/")
+		if len(parts) > 3 { // Has path components
+			return strings.Join(parts[3:], "/")
+		}
 	}
+	return "/api/v1" // Default base URL
 }
 
-// createHealthGroup creates documentation for health endpoints
-func createHealthGroup() APIGroupDoc {
-	return APIGroupDoc{
-		Name:        "health",
-		Description: "System health and status",
-		Endpoints: []APIEndpointDoc{
-			{
-				Path:        "/health",
-				Method:      "GET",
-				Description: "Check API health",
-				Response: map[string]interface{}{
-					"status":  "ok",
-					"version": "v1",
-				},
-				Example: "curl http://localhost:8080/api/v1/health",
-			},
-		},
+// createCurlExample creates an example curl command
+func createCurlExample(path string, method string, params []APIParameterDoc, body interface{}) string {
+	baseURL := "http://localhost:8080/api/v1"
+
+	// Replace path parameters with example values
+	pathWithParams := path
+	for _, param := range params {
+		if param.In == "path" && param.Example != nil {
+			pathWithParams = strings.Replace(
+				pathWithParams,
+				fmt.Sprintf("{%s}", param.Name),
+				fmt.Sprintf("%v", param.Example),
+				-1,
+			)
+		}
 	}
+
+	curl := fmt.Sprintf("curl -X %s %s%s", method, baseURL, pathWithParams)
+
+	// Add query parameters
+	queryParams := []string{}
+	for _, param := range params {
+		if param.In == "query" && param.Example != nil {
+			queryParams = append(queryParams, fmt.Sprintf("%s=%v", param.Name, param.Example))
+		}
+	}
+
+	if len(queryParams) > 0 {
+		curl += "?" + strings.Join(queryParams, "&")
+	}
+
+	// Add request body if POST/PUT/PATCH
+	if (method == "POST" || method == "PUT" || method == "PATCH") && body != nil {
+		bodyJSON, err := json.Marshal(body)
+		if err == nil {
+			curl += fmt.Sprintf(" -d '%s'", string(bodyJSON))
+		}
+	}
+
+	return curl
 }

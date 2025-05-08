@@ -1,0 +1,5 @@
+{
+    "yaml.schemas": {
+        "https://json.schemastore.org/grpc-api-gateway.json": "file:///home/anthony/GolandProjects/mxclone/docs/openapi.yaml"
+    }
+}

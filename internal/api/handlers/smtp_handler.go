@@ -2,15 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"mxclone/internal/api/models"
 	apivalidation "mxclone/internal/api/validation"
 	"mxclone/ports/input"
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 // SMTPHandler encapsulates handlers for SMTP operations
@@ -87,8 +85,7 @@ func (h *SMTPHandler) HandleSMTPConnect(w http.ResponseWriter, r *http.Request) 
 
 // HandleSMTPStartTLS handles SMTP STARTTLS check requests
 func (h *SMTPHandler) HandleSMTPStartTLS(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	host := vars["host"]
+	host := r.PathValue("host")
 
 	if host == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -132,7 +129,7 @@ func (h *SMTPHandler) HandleSMTPStartTLS(w http.ResponseWriter, r *http.Request)
 // HandleSMTPRelayTest handles SMTP open relay test requests
 func (h *SMTPHandler) HandleSMTPRelayTest(w http.ResponseWriter, r *http.Request) {
 	// Read and parse request body
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(models.APIError{
@@ -191,7 +188,7 @@ func (h *SMTPHandler) HandleSMTPRelayTest(w http.ResponseWriter, r *http.Request
 // HandleSMTPCheck handles SMTP check requests
 func (h *SMTPHandler) HandleSMTPCheck(w http.ResponseWriter, r *http.Request) {
 	// Read and parse request body
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(models.APIError{
