@@ -6,7 +6,7 @@ info:
 paths:
   /api/v1/smtp/connect/{host}:
     post:
-      operationId: connect_smtp
+      operationId: create_smtp_connection
       tags:
         - smtp
       summary: /api/v1/smtp/connect/{host}
@@ -16,30 +16,16 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Details of the SMTP connection attempt.
-                properties:
-                  host:
-                    type: string
-                    description: The target host for the SMTP connection.
-                  port:
-                    type: string # Changed from integer
-                    description: The port used for the SMTP connection (e.g., "25", "587").
-                  connected:
-                    type: boolean
-                    description: Indicates if the SMTP connection was successful.
-                  supports_start_tls: # Renamed from supportsStartTLS
-                    type: boolean
-                    description: Indicates if the SMTP server supports STARTTLS.
-                  error:
-                    type: string
-                    description: Error message if the connection failed or an issue occurred.
-                required:
-                  - host
-                  - port
-                  - connected
-                  - supports_start_tls # Updated
-                  - error
+                $ref: "#/components/schemas/SmtpConnectionDetails"
+              examples:
+                ExampleSuccess:
+                  summary: Example of a successful SMTP connection
+                  value:
+                    host: "smtp.example.com"
+                    port: "587"
+                    connected: true
+                    supports_start_tls: true
+                    error: ""
           description: ""
           headers: {}
       security: []
@@ -49,16 +35,18 @@ paths:
           required: true
           description: The host to connect to (e.g., domain.com or mail.domain.com).
           schema:
-            type: string
+              $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
         - name: port
           in: query
           required: false
           description: The port number for the SMTP connection (e.g., "25", "587", "465"). Defaults to "25" if not provided.
           schema:
-            type: string
+            $ref: "#/components/schemas/PortString"
+          example: "25"
   /api/v1/smtp/starttls/{host}:
     post:
-      operationId: check_start_tls
+      operationId: create_start_tls_check
       tags:
         - smtp
       summary: /api/v1/smtp/starttls/{host}
@@ -68,157 +56,28 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Results of STARTTLS check for the host's MX records.
-                properties:
-                  host:
-                    type: string
-                    description: The target host for which STARTTLS support was checked.
-                  mx_records: # Renamed from mxRecords
-                    type: array
-                    description: List of MX records found for the host.
-                    items:
-                      type: string
-                      description: An MX record.
-                  connection_status: # Renamed from connectionStatus
-                    type: object
-                    description: Connection status for each MX server. The keys are identifiers for the MX servers.
-                    properties:
-                      mx_server_1: # Renamed from alt1.aspmx.l.google.com
-                        type: object
-                        description: Connection and STARTTLS status for an individual MX server.
-                        properties:
-                          host:
-                            type: string
-                            description: The MX server hostname.
-                          port:
-                            type: string # Changed from integer
-                            description: The port used to connect to the MX server (e.g., "25", "587").
-                          connected:
-                            type: boolean
-                            description: Indicates if connection to the MX server was successful.
-                          supports_start_tls: # Renamed from supportsStartTLS
-                            type: boolean
-                            description: Indicates if the MX server supports STARTTLS.
-                          error:
-                            type: string
-                            description: Error message if connection or STARTTLS check failed for this MX server.
-                        required:
-                          - host
-                          - port
-                          - connected
-                          - supports_start_tls # Updated
-                          - error
-                      mx_server_2: # Renamed from alt2.aspmx.l.google.com
-                        type: object
-                        description: Connection and STARTTLS status for an individual MX server.
-                        properties:
-                          host:
-                            type: string
-                            description: The MX server hostname.
-                          port:
-                            type: string # Changed from integer
-                            description: The port used to connect to the MX server (e.g., "25", "587").
-                          connected:
-                            type: boolean
-                            description: Indicates if connection to the MX server was successful.
-                          supports_start_tls: # Renamed from supportsStartTLS
-                            type: boolean
-                            description: Indicates if the MX server supports STARTTLS.
-                          error:
-                            type: string
-                            description: Error message if connection or STARTTLS check failed for this MX server.
-                        required:
-                          - host
-                          - port
-                          - connected
-                          - supports_start_tls # Updated
-                          - error
-                      mx_server_3: # Renamed from aspmx.l.google.com
-                        type: object
-                        description: Connection and STARTTLS status for an individual MX server.
-                        properties:
-                          host:
-                            type: string
-                            description: The MX server hostname.
-                          port:
-                            type: string # Changed from integer
-                            description: The port used to connect to the MX server (e.g., "25", "587").
-                          connected:
-                            type: boolean
-                            description: Indicates if connection to the MX server was successful.
-                          supports_start_tls: # Renamed from supportsStartTLS
-                            type: boolean
-                            description: Indicates if the MX server supports STARTTLS.
-                          error:
-                            type: string
-                            description: Error message if connection or STARTTLS check failed for this MX server.
-                        required:
-                          - host
-                          - port
-                          - connected
-                          - supports_start_tls # Updated
-                          - error
-                      mx_server_4: # Renamed from aspmx2.googlemail.com
-                        type: object
-                        description: Connection and STARTTLS status for an individual MX server.
-                        properties:
-                          host:
-                            type: string
-                            description: The MX server hostname.
-                          port:
-                            type: string # Changed from integer
-                            description: The port used to connect to the MX server (e.g., "25", "587").
-                          connected:
-                            type: boolean
-                            description: Indicates if connection to the MX server was successful.
-                          supports_start_tls: # Renamed from supportsStartTLS
-                            type: boolean
-                            description: Indicates if the MX server supports STARTTLS.
-                          error:
-                            type: string
-                            description: Error message if connection or STARTTLS check failed for this MX server.
-                        required:
-                          - host
-                          - port
-                          - connected
-                          - supports_start_tls # Updated
-                          - error
-                      mx_server_5: # Renamed from aspmx3.googlemail.com
-                        type: object
-                        description: Connection and STARTTLS status for an individual MX server.
-                        properties:
-                          host:
-                            type: string
-                            description: The MX server hostname.
-                          port:
-                            type: string # Changed from integer
-                            description: The port used to connect to the MX server (e.g., "25", "587").
-                          connected:
-                            type: boolean
-                            description: Indicates if connection to the MX server was successful.
-                          supports_start_tls: # Renamed from supportsStartTLS
-                            type: boolean
-                            description: Indicates if the MX server supports STARTTLS.
-                          error:
-                            type: string
-                            description: Error message if connection or STARTTLS check failed for this MX server.
-                        required:
-                          - host
-                          - port
-                          - connected
-                          - supports_start_tls # Updated
-                          - error
-                    required:
-                      - mx_server_1 # Updated
-                      - mx_server_2 # Updated
-                      - mx_server_3 # Updated
-                      - mx_server_4 # Updated
-                      - mx_server_5 # Updated
-                required:
-                  - host
-                  - mx_records # Updated
-                  - connection_status # Updated
+                $ref: "#/components/schemas/StartTlsCheckResult"
+              examples:
+                ExampleSuccess:
+                  summary: Example of a STARTTLS check result
+                  value:
+                    host: "example.com"
+                    mx_records:
+                      - "mx1.example.com"
+                      - "mx2.example.com"
+                    connection_status:
+                      mx1_example_com: # Key matches an MX server identifier
+                        host: "mx1.example.com"
+                        port: "25"
+                        connected: true
+                        supports_start_tls: true
+                        error: ""
+                      mx2_example_com: # Key matches an MX server identifier
+                        host: "mx2.example.com"
+                        port: "25"
+                        connected: true
+                        supports_start_tls: false
+                        error: "STARTTLS not supported"
           description: ""
           headers: {}
       security: []
@@ -228,10 +87,11 @@ paths:
           required: true
           description: The host (domain) for which to check STARTTLS support on its MX records.
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
   /api/v1/auth/spf/{host}:
     post:
-      operationId: get_spf_record
+      operationId: create_spf_record_lookup
       tags:
         - auth
       summary: /api/v1/auth/spf/{host}
@@ -241,33 +101,18 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Details of the SPF record check.
-                properties:
-                  domain:
-                    type: string
-                    description: The domain for which the SPF record was checked.
-                  has_record: # Renamed from hasRecord
-                    type: boolean
-                    description: Indicates if an SPF record was found.
-                  record:
-                    type: string
-                    description: The raw SPF record string.
-                  is_valid: # Renamed from isValid
-                    type: boolean
-                    description: Indicates if the SPF record is valid.
-                  mechanisms:
-                    type: array
-                    description: List of mechanisms found in the SPF record.
-                    items:
-                      type: string
-                      description: An SPF record mechanism.
-                required:
-                  - domain
-                  - has_record # Updated
-                  - record
-                  - is_valid # Updated
-                  - mechanisms
+                $ref: "#/components/schemas/SpfRecordDetails"
+              examples:
+                ExampleSuccess:
+                  summary: Example of SPF record details
+                  value:
+                    domain: "example.com"
+                    has_record: true
+                    record: "v=spf1 mx a:mail.example.com ~all"
+                    is_valid: true
+                    mechanisms:
+                      - "mx"
+                      - "a:mail.example.com"
           description: ""
           headers: {}
       security: []
@@ -277,10 +122,11 @@ paths:
           required: true
           description: The domain for which to retrieve the SPF record.
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
   /api/v1/auth/dmarc/{host}:
     post:
-      operationId: get_dmarc_record
+      operationId: create_dmarc_record_lookup
       tags:
         - auth
       summary: /api/v1/auth/dmarc/{host}
@@ -290,34 +136,17 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Details of the DMARC record check.
-                properties:
-                  domain:
-                    type: string
-                    description: The domain for which the DMARC record was checked.
-                  has_record: # Renamed from hasRecord
-                    type: boolean
-                    description: Indicates if a DMARC record was found.
-                  record:
-                    type: string
-                    description: The raw DMARC record string.
-                  is_valid: # Renamed from isValid
-                    type: boolean
-                    description: Indicates if the DMARC record is valid.
-                  policy:
-                    type: string
-                    description: The DMARC policy (e.g., none, quarantine, reject).
-                  percentage:
-                    type: integer
-                    description: The percentage of messages to which the DMARC policy applies.
-                required:
-                  - domain
-                  - has_record # Updated
-                  - record
-                  - is_valid # Updated
-                  - policy
-                  - percentage
+                $ref: "#/components/schemas/DmarcRecordDetails"
+              examples:
+                ExampleSuccess:
+                  summary: Example of DMARC record details
+                  value:
+                    domain: "example.com"
+                    has_record: true
+                    record: "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com; pct=100"
+                    is_valid: true
+                    policy: "quarantine"
+                    percentage: 100
           description: ""
           headers: {}
       security: []
@@ -327,10 +156,11 @@ paths:
           required: true
           description: The domain for which to retrieve the DMARC record.
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
   /api/v1/dns/{host}:
     post:
-      operationId: get_dns_records
+      operationId: create_dns_records_lookup
       tags:
         - dns
       summary: /api/v1/dns/{host}
@@ -340,65 +170,19 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Collection of DNS records for the specified host.
-                properties:
-                  records:
-                    type: object
-                    description: DNS records categorized by type.
-                    properties:
-                      A:
-                        type: array
-                        description: List of A records.
-                        items:
-                          type: string
-                          description: An A record (IPv4 address).
-                      AAAA:
-                        type: array
-                        description: List of AAAA records.
-                        items:
-                          type: string
-                          description: An AAAA record (IPv6 address).
-                      CNAME:
-                        type: array
-                        description: List of CNAME records.
-                        items:
-                          type: string
-                          description: A CNAME record (canonical name).
-                      MX:
-                        type: array
-                        description: List of MX records.
-                        items:
-                          type: string
-                          description: An MX record (mail exchange).
-                      NS:
-                        type: array
-                        description: List of NS records.
-                        items:
-                          type: string
-                          description: An NS record (name server).
-                      SOA:
-                        type: array
-                        description: List of SOA records.
-                        items:
-                          type: string
-                          description: An SOA record (start of authority).
-                      TXT:
-                        type: array
-                        description: List of TXT records.
-                        items:
-                          type: string
-                          description: A TXT record (text).
-                    required:
-                      - A
-                      - AAAA
-                      - CNAME
-                      - MX
-                      - NS
-                      - SOA
-                      - TXT
-                required:
-                  - records
+                $ref: "#/components/schemas/DnsRecordsCollection"
+              examples:
+                ExampleSuccess:
+                  summary: Example of DNS records collection
+                  value:
+                    records:
+                      A: ["192.0.2.1", "192.0.2.2"]
+                      AAAA: ["2001:db8::1"]
+                      CNAME: ["www.example.com.herokudns.com"]
+                      MX: ["10 mail.example.com", "20 mail2.example.com"]
+                      NS: ["ns1.example.com", "ns2.example.com"]
+                      SOA: ["ns1.example.com. admin.example.com. 2023010101 7200 3600 1209600 3600"]
+                      TXT: ["v=spf1 include:_spf.google.com ~all", "google-site-verification=abcdef12345"]
           description: ""
           headers: {}
       security: []
@@ -408,10 +192,11 @@ paths:
           required: true
           description: The host (domain or subdomain) for which to perform DNS lookups.
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
   /api/v1/blacklist/{host}:
     post:
-      operationId: check_blacklist
+      operationId: create_blacklist_check
       tags:
         - blacklist
       summary: /api/v1/blacklist/{host}
@@ -421,22 +206,16 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Blacklist check results for the host's IP address.
-                properties:
-                  ip:
-                    type: string
-                    description: The IP address that was checked against blacklists.
-                  listed_on: # Renamed from listedOn
-                    type: object
-                    description: An object where keys are blacklist names and values indicate if listed.
-                  error:
-                    type: string
-                    description: Error message if the blacklist check failed.
-                required:
-                  - ip
-                  - listed_on # Updated
-                  - error
+                $ref: "#/components/schemas/BlacklistCheckResult"
+              examples:
+                ExampleSuccess:
+                  summary: Example of a blacklist check result
+                  value:
+                    ip: "192.0.2.1"
+                    listed_on:
+                      "zen.spamhaus.org": false
+                      "bl.spamcop.net": true
+                    error: ""
           description: ""
           headers: {}
       security: []
@@ -446,10 +225,11 @@ paths:
           required: true
           description: The host (domain or IP address) to check against DNS blacklists.
           schema:
-            type: string
+            $ref: "#/components/schemas/HostOrIPAddressString"
+          example: "example.com"
   /api/v1/network/ping/{host}:
     post:
-      operationId: ping_host
+      operationId: create_ping
       tags:
         - network
       summary: /api/v1/network/ping/{host}
@@ -459,67 +239,24 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Results of the ping operation.
-                properties:
-                  tool:
-                    type: string
-                    description: Name of the tool used for pinging.
-                  target:
-                    type: string
-                    description: The target host that was pinged.
-                  ping_result: # Renamed from pingResult
-                    type: object
-                    description: Detailed results of the ping.
-                    properties:
-                      target:
-                        type: string
-                        description: The target host of the ping.
-                      resolved_ip: # Renamed from resolvedIP
-                        type: string
-                        description: The resolved IP address of the target.
-                      success:
-                        type: boolean
-                        description: Indicates if the ping was successful.
-                      rtts:
-                        type: array
-                        description: List of round-trip times for each packet.
-                        items:
-                          type: string
-                          description: Round-trip time for a packet.
-                      avg_rtt: # Renamed from avgRTT
-                        type: string
-                        description: Average round-trip time.
-                      min_rtt: # Renamed from minRTT
-                        type: string
-                        description: Minimum round-trip time.
-                      max_rtt: # Renamed from maxRTT
-                        type: string
-                        description: Maximum round-trip time.
-                      packets_sent: # Renamed from packetsSent
-                        type: integer
-                        description: Number of packets sent.
-                      packets_received: # Renamed from packetsReceived
-                        type: integer
-                        description: Number of packets received.
-                      packet_loss: # Renamed from packetLoss
-                        type: integer
-                        description: Percentage of packet loss.
-                    required:
-                      - target
-                      - resolved_ip # Updated
-                      - success
-                      - rtts
-                      - avg_rtt # Updated
-                      - min_rtt # Updated
-                      - max_rtt # Updated
-                      - packets_sent # Updated
-                      - packets_received # Updated
-                      - packet_loss # Updated
-                required:
-                  - tool
-                  - target
-                  - ping_result # Updated
+                $ref: "#/components/schemas/PingOperationResult"
+              examples:
+                ExampleSuccess:
+                  summary: Example of a ping operation result
+                  value:
+                    tool: "system_ping"
+                    target: "example.com"
+                    ping_result:
+                      target: "example.com"
+                      resolved_ip: "192.0.2.1"
+                      success: true
+                      rtts: ["10.1ms", "10.5ms", "10.2ms", "10.3ms"]
+                      avg_rtt: "10.275ms"
+                      min_rtt: "10.1ms"
+                      max_rtt: "10.5ms"
+                      packets_sent: 4
+                      packets_received: 4
+                      packet_loss: 0
           description: ""
           headers: {}
       security: []
@@ -529,10 +266,11 @@ paths:
           required: true
           description: The host (domain or IP address) to ping.
           schema:
-            type: string
+            $ref: "#/components/schemas/HostOrIPAddressString"
+          example: "example.com"
   /api/v1/network/traceroute/{host}:
     post:
-      operationId: traceroute_host
+      operationId: create_traceroute
       tags:
         - network
       summary: /api/v1/network/traceroute/{host}
@@ -542,61 +280,30 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Results of the traceroute operation.
-                properties:
-                  tool:
-                    type: string
-                    description: Name of the tool used for traceroute.
-                  target:
-                    type: string
-                    description: The target host for the traceroute.
-                  traceroute_result: # Renamed from tracerouteResult
-                    type: object
-                    description: Detailed results of the traceroute.
-                    properties:
-                      target:
-                        type: string
-                        description: The target host of the traceroute.
-                      resolved_ip: # Renamed from resolvedIP
-                        type: string
-                        description: The resolved IP address of the target.
+                $ref: "#/components/schemas/TracerouteOperationResult"
+              examples:
+                ExampleSuccess:
+                  summary: Example of a traceroute operation result
+                  value:
+                    tool: "system_traceroute"
+                    target: "example.com"
+                    traceroute_result:
+                      target: "example.com"
+                      resolved_ip: "192.0.2.1"
                       hops:
-                        type: array
-                        description: List of hops in the traceroute path.
-                        items:
-                          type: object
-                          description: Details of a single hop in the traceroute.
-                          properties:
-                            number:
-                              type: integer
-                              description: Hop number.
-                            ip:
-                              type: string
-                              description: IP address of the hop.
-                            hostname:
-                              type: string
-                              description: Hostname of the hop (if resolved).
-                            rtt:
-                              type: string
-                              description: Round-trip time to the hop.
-                          required:
-                            - number
-                            - ip
-                            - hostname
-                            - rtt
-                      target_reached: # Renamed from targetReached
-                        type: boolean
-                        description: Indicates if the target was reached.
-                    required:
-                      - target
-                      - resolved_ip # Updated
-                      - hops
-                      - target_reached # Updated
-                required:
-                  - tool
-                  - target
-                  - traceroute_result # Updated
+                        - number: 1
+                          ip: "192.168.1.1"
+                          hostname: "router.local"
+                          rtt: "1.2ms"
+                        - number: 2
+                          ip: "10.0.0.1"
+                          hostname: "isp-gw.example.net"
+                          rtt: "5.5ms"
+                        - number: 3
+                          ip: "192.0.2.1"
+                          hostname: "example.com"
+                          rtt: "10.1ms"
+                      target_reached: true
           description: ""
           headers: {}
       security: []
@@ -606,10 +313,11 @@ paths:
           required: true
           description: The host (domain or IP address) to trace the route to.
           schema:
-            type: string
+            $ref: "#/components/schemas/HostOrIPAddressString"
+          example: "example.com"
   /api/v1/network/whois/{host}:
     post:
-      operationId: get_whois_info
+      operationId: create_whois_lookup
       tags:
         - network
       summary: /api/v1/network/whois/{host}
@@ -619,51 +327,20 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Results of the WHOIS lookup.
-                properties:
-                  tool:
-                    type: string
-                    description: Name of the tool used for WHOIS lookup.
-                  target:
-                    type: string
-                    description: The target domain for the WHOIS lookup.
-                  whois_result: # Renamed from whoisResult
-                    type: object
-                    description: Detailed WHOIS information.
-                    properties:
-                      target:
-                        type: string
-                        description: The target domain of the WHOIS lookup.
-                      registrar:
-                        type: string
-                        description: Registrar of the domain.
-                      created_date: # Renamed from createdDate
-                        type: string
-                        description: Creation date of the domain registration.
-                      expiration_date: # Renamed from expirationDate
-                        type: string
-                        description: Expiration date of the domain registration.
-                      name_servers: # Renamed from nameServers
-                        type: array
-                        description: List of name servers for the domain.
-                        items:
-                          type: string
-                          description: A name server.
-                      raw_data: # Renamed from rawData
-                        type: string
-                        description: Raw WHOIS data.
-                    required:
-                      - target
-                      - registrar
-                      - created_date # Updated
-                      - expiration_date # Updated
-                      - name_servers # Updated
-                      - raw_data # Updated
-                required:
-                  - tool
-                  - target
-                  - whois_result # Updated
+                $ref: "#/components/schemas/WhoisOperationResult"
+              examples:
+                ExampleSuccess:
+                  summary: Example of a WHOIS lookup result
+                  value:
+                    tool: "system_whois"
+                    target: "example.com"
+                    whois_result:
+                      target: "example.com"
+                      registrar: "Example Registrar Inc."
+                      created_date: "2000-01-01T00:00:00Z"
+                      expiration_date: "2025-01-01T00:00:00Z"
+                      name_servers: ["ns1.exampleregistrar.com", "ns2.exampleregistrar.com"]
+                      raw_data: "Domain Name: EXAMPLE.COM\nRegistrar: Example Registrar Inc.\n..."
           description: ""
           headers: {}
       security: []
@@ -673,16 +350,18 @@ paths:
           required: true
           description: "The host (domain name) for which to retrieve WHOIS information. Note: This path parameter is used as the primary target. The 'domain' query parameter can be used alternatively if needed, but the path parameter takes precedence."
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
         - name: domain
           in: query
           required: false
           description: "The domain name for which to retrieve WHOIS information. This is an alternative to the path parameter if a different target is needed for WHOIS specifically."
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.net"
   /api/v1/auth/dkim/{host}:
     post:
-      operationId: get_dkim_records
+      operationId: create_dkim_records_lookup
       tags:
         - auth
       summary: /api/v1/auth/dkim/{host}
@@ -692,54 +371,25 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Results of DKIM record checks for common selectors.
-                properties:
-                  domain:
-                    type: string
-                    description: The domain for which DKIM records were checked.
-                  results:
-                    type: array
-                    description: List of DKIM check results for each selector.
-                    items:
-                      type: object
-                      description: DKIM check result for a specific selector.
-                      properties:
-                        domain:
-                          type: string
-                          description: The domain checked.
-                        selector:
-                          type: string
-                          description: The DKIM selector used.
-                        has_records: # Renamed from hasRecords
-                          type: boolean
-                          description: Indicates if DKIM records were found for this selector.
-                        is_valid: # Renamed from isValid
-                          type: boolean
-                          description: Indicates if the found DKIM records are valid.
-                        error:
-                          type: string
-                          description: Error message if the check failed for this selector.
-                      required:
-                        - domain
-                        - selector
-                        - has_records # Updated
-                        - is_valid # Updated
-                        - error
-                  is_valid: # Renamed from isValid
-                    type: boolean
-                    description: Overall DKIM validity status (e.g., if at least one selector is valid).
-                  selectors:
-                    type: array
-                    description: List of selectors that were checked.
-                    items:
-                      type: string
-                      description: A DKIM selector.
-                required:
-                  - domain
-                  - results
-                  - is_valid # Updated
-                  - selectors
+                $ref: "#/components/schemas/DkimRecordsResult"
+              examples:
+                ExampleSuccess:
+                  summary: Example of DKIM records check for common selectors
+                  value:
+                    domain: "example.com"
+                    results:
+                      - domain: "example.com"
+                        selector: "google"
+                        has_records: true
+                        is_valid: true
+                        error: ""
+                      - domain: "example.com"
+                        selector: "mail"
+                        has_records: false
+                        is_valid: false
+                        error: "No DKIM record found"
+                    is_valid: true
+                    selectors: ["google", "mail"]
           description: ""
           headers: {}
       security: []
@@ -749,10 +399,11 @@ paths:
           required: true
           description: The domain for which to check DKIM records using common selectors.
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
   /api/v1/auth/dkim/{host}/{selector}:
     post:
-      operationId: get_dkim_record_by_selector
+      operationId: create_dkim_record_lookup_by_selector
       tags:
         - auth
       summary: /api/v1/auth/dkim/{host}/{selector}
@@ -762,39 +413,17 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: Details of the DKIM record check for a specific selector.
-                properties:
-                  domain:
-                    type: string
-                    description: The domain for which the DKIM record was checked.
-                  selector:
-                    type: string
-                    description: The specific DKIM selector used.
-                  has_records: # Renamed from hasRecords
-                    type: boolean
-                    description: Indicates if DKIM records were found for this selector.
-                  records: # This was 'records', assuming it might contain multiple records or a structured record.
-                    type: object # Changed from specific 'google' to generic object
-                    description: The DKIM record(s) found. Structure may vary.
-                    properties:
-                      # Example property, actual structure might differ
-                      record_value:
-                        type: string
-                        description: The value of the DKIM record.
-                    # 'required' for this sub-object would depend on actual known structure
-                    # For now, let's assume no specific sub-properties are always required
-                    # required:
-                    #   - record_value
-                  is_valid: # Renamed from isValid
-                    type: boolean
-                    description: Indicates if the found DKIM record is valid.
-                required:
-                  - domain
-                  - selector
-                  - has_records # Updated
-                  - records
-                  - is_valid # Updated
+                $ref: "#/components/schemas/DkimRecordBySelectorResult"
+              examples:
+                ExampleSuccess:
+                  summary: Example of DKIM record check for a specific selector
+                  value:
+                    domain: "example.com"
+                    selector: "google"
+                    has_records: true
+                    records:
+                      record_value: "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+                    is_valid: true
           description: ""
           headers: {}
       security: []
@@ -804,11 +433,634 @@ paths:
           required: true
           description: The domain for which to retrieve the DKIM record.
           schema:
-            type: string
+            $ref: "#/components/schemas/DomainNameString"
+          example: "example.com"
         - name: selector
           in: path
           required: true
           description: The specific DKIM selector to use for the lookup.
           schema:
-            type: string
-components: {}
+            $ref: "#/components/schemas/DkimSelectorString"
+          example: "google"
+components:
+  schemas:
+    # Reusable String Pattern Schemas (New)
+    DomainNameString:
+      type: string
+      description: "A string representing a valid domain name."
+      pattern: "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}$"
+      example: "example.com"
+    PortString:
+      type: string
+      description: "A string representing a network port number."
+      pattern: "^\\d+$"
+      example: "443"
+    ErrorString:
+      type: string
+      description: "A string containing an error message. Can be empty if no error."
+      pattern: "^.*$"
+      example: "Connection timed out." # Example if error, or "" if no error
+    NonEmptyString:
+      type: string
+      description: "A non-empty string."
+      pattern: "^.+$"
+      example: "Some text value"
+    IPv4String:
+      type: string
+      description: "A string representing a valid IPv4 address."
+      pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+      example: "192.168.1.1"
+    IPv6String:
+      type: string
+      description: "A string representing a valid IPv6 address."
+      # Regex pattern for validating IPv6 addresses
+      pattern: &IPv6Pattern >
+        ^(
+          ([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4} |  # 1:1:1:1:1:1:1:1
+          ([0-9a-fA-F]{1,4}:){1,7}: |                # 1:: or 1:1:: (up to 7 colons)
+          ([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4} |# 1::1 or 1:1::1 (up to 6 colons)
+          ([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2} | # 1::1:1 or 1:1::1:1 (up to 5 colons)
+          ([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3} | # 1::1:1:1 or 1:1::1:1:1 (up to 4 colons)
+          ([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4} | # 1::1:1:1:1 or 1:1::1:1:1:1 (up to 3 colons)
+          ([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5} | # 1::1:1:1:1:1 or 1:1::1:1:1:1:1 (up to 2 colons)
+          [0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6}) |      # 1::1:1:1:1:1:1 or 1:1::1:1:1:1:1:1
+          :((:[0-9a-fA-F]{1,4}){1,7}|:) |                    # ::1 or ::1:1:1:1:1:1:1
+          fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,} |    # fe80::1%eth0 or fe80::1%1
+          ::(ffff(:0{1,4}){0,1}:){0,1}
+          ((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}
+          (25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]) |         # ::255.255.255.255 or ::ffff:255.255.255.255
+          ([0-9a-fA-F]{1,4}:){1,4}:
+          ((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}
+          (25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])          # 1:1:1:1:1:1:255.255.255.255
+        )$
+      example: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+    MxRecordValueString:
+      type: string
+      description: "A string representing an MX record value (priority and host)."
+      pattern: "^\\d+ ([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}$"
+      example: "10 mx.example.com"
+    DmarcPolicyString:
+      type: string
+      description: "A string representing a DMARC policy (none, quarantine, or reject)."
+      pattern: "^(none|quarantine|reject)$"
+      example: "quarantine"
+    ToolNameString:
+      type: string
+      description: "A string representing the name of a tool, using alphanumeric characters and underscores."
+      pattern: "^[a-zA-Z0-9_]+$"
+      example: "system_ping"
+    HostOrIPAddressString:
+      type: string
+      description: "A string representing a hostname, an IPv4 address, or an IPv6 address."
+      pattern: ^(?:(?:([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?))|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])))$
+      example: "example.com"
+    RttString:
+      type: string
+      description: "A string representing a round-trip time value, ending with 'ms'."
+      pattern: "^\\d+(\\.\\d+)?ms$"
+      example: "10.5ms"
+    TracerouteRttString:
+      type: string
+      description: "A string representing a round-trip time value for traceroute (can be '*' or value ending with 'ms')."
+      pattern: "^(\\*|\\d+(\\.\\d+)?ms)$"
+      example: "12.1ms"
+    DateTimeUTCString:
+      type: string
+      description: "A string representing a date-time in ISO8601 UTC format (YYYY-MM-DDTHH:MM:SSZ)."
+      pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+      format: "date-time"
+      example: "2023-01-01T12:00:00Z"
+    DkimSelectorString:
+      type: string
+      description: "A string representing a DKIM selector (alphanumeric, dot, underscore, hyphen)."
+      pattern: "^[a-zA-Z0-9._\\-]+$"
+      example: "google"
+    MultilineString:
+      type: string
+      description: "A string that can contain multiple lines of text and must be non-empty."
+      pattern: "^(.|\\s)+$"
+      example: "Line 1 of data\nLine 2 of data"
+
+    # Existing Schemas (Modified)
+    SmtpConnectionDetails:
+      type: object
+      description: Details of the SMTP connection attempt.
+      properties:
+        host:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The target host for the SMTP connection.
+        port:
+          allOf:
+            - $ref: "#/components/schemas/PortString"
+            - description: The port used for the SMTP connection (e.g., "25", "587").
+        connected:
+          type: boolean
+          description: Indicates if the SMTP connection was successful.
+        supports_start_tls:
+          type: boolean
+          description: Indicates if the SMTP server supports STARTTLS.
+        error:
+          allOf:
+            - $ref: "#/components/schemas/ErrorString"
+            - description: Error message if the connection failed or an issue occurred.
+      required:
+        - host
+        - port
+        - connected
+        - supports_start_tls
+        - error
+    StartTlsCheckResult:
+      type: object
+      description: Results of STARTTLS check for the host's MX records.
+      properties:
+        host:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The target host for which STARTTLS support was checked.
+        mx_records:
+          type: array
+          description: List of MX records found for the host (hostnames only).
+          items:
+            allOf:
+              - $ref: "#/components/schemas/DomainNameString"
+              - description: An MX record hostname.
+        connection_status:
+          type: object
+          description: Connection status for each MX server. The keys are identifiers for the MX servers.
+          additionalProperties:
+            $ref: "#/components/schemas/MxServerStatus"
+      required:
+        - host
+        - mx_records
+        - connection_status
+    MxServerStatus:
+      type: object
+      description: Connection and STARTTLS status for an individual MX server.
+      properties:
+        host:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The MX server hostname.
+        port:
+          allOf:
+            - $ref: "#/components/schemas/PortString"
+            - description: The port used to connect to the MX server (e.g., "25", "587").
+        connected:
+          type: boolean
+          description: Indicates if connection to the MX server was successful.
+        supports_start_tls:
+          type: boolean
+          description: Indicates if the MX server supports STARTTLS.
+        error:
+          allOf:
+            - $ref: "#/components/schemas/ErrorString"
+            - description: Error message if connection or STARTTLS check failed for this MX server.
+      required:
+        - host
+        - port
+        - connected
+        - supports_start_tls
+        - error
+    SpfRecordDetails:
+      type: object
+      description: Details of the SPF record check.
+      properties:
+        domain:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The domain for which the SPF record was checked.
+        has_record:
+          type: boolean
+          description: Indicates if an SPF record was found.
+        record:
+          allOf:
+            - $ref: "#/components/schemas/NonEmptyString"
+            - description: The raw SPF record string.
+        is_valid:
+          type: boolean
+          description: Indicates if the SPF record is valid.
+        mechanisms:
+          type: array
+          description: List of mechanisms found in the SPF record.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/NonEmptyString"
+              - description: An SPF record mechanism.
+      required:
+        - domain
+        - has_record
+        - record
+        - is_valid
+        - mechanisms
+    DmarcRecordDetails:
+      type: object
+      description: Details of the DMARC record check.
+      properties:
+        domain:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The domain for which the DMARC record was checked.
+        has_record:
+          type: boolean
+          description: Indicates if a DMARC record was found.
+        record:
+          allOf:
+            - $ref: "#/components/schemas/NonEmptyString"
+            - description: The raw DMARC record string.
+        is_valid:
+          type: boolean
+          description: Indicates if the DMARC record is valid.
+        policy:
+          allOf:
+            - $ref: "#/components/schemas/DmarcPolicyString"
+            - description: The DMARC policy (e.g., none, quarantine, reject).
+        percentage:
+          type: integer
+          description: The percentage of messages to which the DMARC policy applies.
+      required:
+        - domain
+        - has_record
+        - record
+        - is_valid
+        - policy
+        - percentage
+    DnsRecordsCollection:
+      type: object
+      description: Collection of DNS records for the specified host.
+      properties:
+        records:
+          $ref: "#/components/schemas/DnsRecordTypes" # Assuming DnsRecordTypes itself doesn't have siblings with $ref
+      required:
+        - records
+    DnsRecordTypes:
+      type: object
+      description: DNS records categorized by type.
+      properties:
+        A:
+          type: array
+          description: List of A records.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/IPv4String"
+              - description: An A record (IPv4 address).
+        AAAA:
+          type: array
+          description: List of AAAA records.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/IPv6String"
+              - description: An AAAA record (IPv6 address).
+        CNAME:
+          type: array
+          description: List of CNAME records.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/DomainNameString"
+              - description: A CNAME record (canonical name).
+        MX:
+          type: array
+          description: List of MX records.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/MxRecordValueString"
+              - description: An MX record (mail exchange).
+        NS:
+          type: array
+          description: List of NS records.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/DomainNameString"
+              - description: An NS record (name server).
+        SOA:
+          type: array
+          description: List of SOA records.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/NonEmptyString"
+              - description: An SOA record (start of authority).
+        TXT:
+          type: array
+          description: List of TXT records.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/NonEmptyString"
+              - description: A TXT record (text).
+      required:
+        - A
+        - AAAA
+        - CNAME
+        - MX
+        - NS
+        - SOA
+        - TXT
+    BlacklistCheckResult:
+      type: object
+      description: Blacklist check results for the host's IP address.
+      properties:
+        ip:
+          allOf:
+            - $ref: "#/components/schemas/IPv4String"
+            - description: The IP address that was checked against blacklists.
+        listed_on:
+          type: object
+          description: An object where keys are blacklist names and values indicate if listed.
+          additionalProperties:
+            type: boolean
+        error:
+          allOf:
+            - $ref: "#/components/schemas/ErrorString"
+            - description: Error message if the blacklist check failed.
+      required:
+        - ip
+        - listed_on
+        - error
+    PingOperationResult:
+      type: object
+      description: Results of the ping operation.
+      properties:
+        tool:
+          allOf:
+            - $ref: "#/components/schemas/ToolNameString"
+            - description: Name of the tool used for pinging.
+        target:
+          allOf:
+            - $ref: "#/components/schemas/HostOrIPAddressString"
+            - description: The target host that was pinged.
+        ping_result:
+          $ref: "#/components/schemas/PingResultDetails"
+      required:
+        - tool
+        - target
+        - ping_result
+    PingResultDetails:
+      type: object
+      description: Detailed results of the ping.
+      properties:
+        target:
+          allOf:
+            - $ref: "#/components/schemas/HostOrIPAddressString"
+            - description: The target host of the ping.
+        resolved_ip:
+          allOf:
+            - $ref: "#/components/schemas/IPv4String"
+            - description: The resolved IP address of the target.
+        success:
+          type: boolean
+          description: Indicates if the ping was successful.
+        rtts:
+          type: array
+          description: List of round-trip times for each packet.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/RttString"
+              - description: Round-trip time for a packet.
+        avg_rtt:
+          allOf:
+            - $ref: "#/components/schemas/RttString"
+            - description: Average round-trip time.
+        min_rtt:
+          allOf:
+            - $ref: "#/components/schemas/RttString"
+            - description: Minimum round-trip time.
+        max_rtt:
+          allOf:
+            - $ref: "#/components/schemas/RttString"
+            - description: Maximum round-trip time.
+        packets_sent:
+          type: integer
+          description: Number of packets sent.
+        packets_received:
+          type: integer
+          description: Number of packets received.
+        packet_loss:
+          type: integer
+          description: Percentage of packet loss.
+      required:
+        - target
+        - resolved_ip
+        - success
+        - rtts
+        - avg_rtt
+        - min_rtt
+        - max_rtt
+        - packets_sent
+        - packets_received
+        - packet_loss
+    TracerouteOperationResult:
+      type: object
+      description: Results of the traceroute operation.
+      properties:
+        tool:
+          allOf:
+            - $ref: "#/components/schemas/ToolNameString"
+            - description: Name of the tool used for traceroute.
+        target:
+          allOf:
+            - $ref: "#/components/schemas/HostOrIPAddressString"
+            - description: The target host for the traceroute.
+        traceroute_result:
+          $ref: "#/components/schemas/TracerouteResultDetails"
+      required:
+        - tool
+        - target
+        - traceroute_result
+    TracerouteResultDetails:
+      type: object
+      description: Detailed results of the traceroute.
+      properties:
+        target:
+          allOf:
+            - $ref: "#/components/schemas/HostOrIPAddressString"
+            - description: The target host of the traceroute.
+        resolved_ip:
+          allOf:
+            - $ref: "#/components/schemas/IPv4String" # Assuming IPv4 based on original pattern. Could be HostOrIPAddressString if IPv6 is possible.
+            - description: The resolved IP address of the target.
+        hops:
+          type: array
+          description: List of hops in the traceroute path.
+          items:
+            $ref: "#/components/schemas/TracerouteHop"
+        target_reached:
+          type: boolean
+          description: Indicates if the target was reached.
+      required:
+        - target
+        - resolved_ip
+        - hops
+        - target_reached
+    TracerouteHop:
+      type: object
+      description: Details of a single hop in the traceroute.
+      properties:
+        number:
+          type: integer
+          description: Hop number.
+        ip:
+          allOf:
+            - $ref: "#/components/schemas/IPv4String" # Assuming IPv4 based on original pattern. Could be HostOrIPAddressString if IPv6 is possible.
+            - description: IP address of the hop.
+        hostname:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString" # Or HostOrIPAddressString if IP can appear here
+            - description: Hostname of the hop (if resolved).
+        rtt:
+          allOf:
+            - $ref: "#/components/schemas/TracerouteRttString"
+            - description: Round-trip time to the hop.
+      required:
+        - number
+        - ip
+        - hostname
+        - rtt
+    WhoisOperationResult:
+      type: object
+      description: Results of the WHOIS lookup.
+      properties:
+        tool:
+          allOf:
+            - $ref: "#/components/schemas/ToolNameString"
+            - description: Name of the tool used for WHOIS lookup.
+        target:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The target domain for the WHOIS lookup.
+        whois_result:
+          $ref: "#/components/schemas/WhoisResultDetails"
+      required:
+        - tool
+        - target
+        - whois_result
+    WhoisResultDetails:
+      type: object
+      description: Detailed WHOIS information.
+      properties:
+        target:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The target domain of the WHOIS lookup.
+        registrar:
+          allOf:
+            - $ref: "#/components/schemas/NonEmptyString"
+            - description: Registrar of the domain.
+        created_date:
+          allOf:
+            - $ref: "#/components/schemas/DateTimeUTCString"
+            - description: Creation date of the domain registration.
+        expiration_date:
+          allOf:
+            - $ref: "#/components/schemas/DateTimeUTCString"
+            - description: Expiration date of the domain registration.
+        name_servers:
+          type: array
+          description: List of name servers for the domain.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/DomainNameString"
+              - description: A name server.
+        raw_data:
+          allOf:
+            - $ref: "#/components/schemas/MultilineString"
+            - description: Raw WHOIS data.
+      required:
+        - target
+        - registrar
+        - created_date
+        - expiration_date
+        - name_servers
+        - raw_data
+    DkimRecordsResult:
+      type: object
+      description: Results of DKIM record checks for common selectors.
+      properties:
+        domain:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The domain for which DKIM records were checked.
+        results:
+          type: array
+          description: List of DKIM check results for each selector.
+          items:
+            $ref: "#/components/schemas/DkimSelectorResult"
+        is_valid:
+          type: boolean
+          description: Overall DKIM validity status (e.g., if at least one selector is valid).
+        selectors:
+          type: array
+          description: List of selectors that were checked.
+          items:
+            allOf:
+              - $ref: "#/components/schemas/DkimSelectorString"
+              - description: A DKIM selector.
+      required:
+        - domain
+        - results
+        - is_valid
+        - selectors
+    DkimSelectorResult:
+      type: object
+      description: DKIM check result for a specific selector.
+      properties:
+        domain:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The domain checked.
+        selector:
+          allOf:
+            - $ref: "#/components/schemas/DkimSelectorString"
+            - description: The DKIM selector used.
+        has_records:
+          type: boolean
+          description: Indicates if DKIM records were found for this selector.
+        is_valid:
+          type: boolean
+          description: Indicates if the found DKIM records are valid.
+        error:
+          allOf:
+            - $ref: "#/components/schemas/ErrorString"
+            - description: Error message if the check failed for this selector.
+      required:
+        - domain
+        - selector
+        - has_records
+        - is_valid
+        - error
+    DkimRecordBySelectorResult:
+      type: object
+      description: Details of the DKIM record check for a specific selector.
+      properties:
+        domain:
+          allOf:
+            - $ref: "#/components/schemas/DomainNameString"
+            - description: The domain for which the DKIM record was checked.
+        selector:
+          allOf:
+            - $ref: "#/components/schemas/DkimSelectorString"
+            - description: The specific DKIM selector used.
+        has_records:
+          type: boolean
+          description: Indicates if DKIM records were found for this selector.
+        records:
+          $ref: "#/components/schemas/DkimRecordValue"
+        is_valid:
+          type: boolean
+          description: Indicates if the found DKIM record is valid.
+      required:
+        - domain
+        - selector
+        - has_records
+        - records
+        - is_valid
+    DkimRecordValue:
+      type: object
+      description: The DKIM record(s) found. Structure may vary.
+      properties:
+        record_value:
+          allOf:
+            - $ref: "#/components/schemas/NonEmptyString"
+            - description: The value of the DKIM record.
+      # 'required' for this sub-object would depend on actual known structure
+      # For now, let's assume no specific sub-properties are always required
+      # required:
+      #   - record_value

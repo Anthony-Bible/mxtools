@@ -1,5 +1,5 @@
 {
     "yaml.schemas": {
-        "https://json.schemastore.org/grpc-api-gateway.json": "file:///home/anthony/GolandProjects/mxclone/docs/openapi.yaml"
+        "https://spec.openapis.org/oas/3.1/schema/2022-10-07": "file:///home/anthony/GolandProjects/mxclone/docs/openapi.yaml"
     }
 }
