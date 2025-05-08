@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"mxclone/domain/networktools"
 	"mxclone/internal/api/models"
 	apivalidation "mxclone/internal/api/validation"
@@ -203,7 +203,7 @@ func (h *NetworkToolsHandler) HandleWhois(w http.ResponseWriter, r *http.Request
 // HandleNetworkTools handles legacy network tools requests
 func (h *NetworkToolsHandler) HandleNetworkTools(w http.ResponseWriter, r *http.Request) {
 	// Read and parse request body
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(models.APIError{

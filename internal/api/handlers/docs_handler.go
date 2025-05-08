@@ -70,7 +70,7 @@ func NewDocsHandler(logger *logging.Logger) *DocsHandler {
 	// Load OpenAPI spec
 	doc, err := handler.loadOpenAPISpec()
 	if err != nil {
-		logger.Error("Failed to load OpenAPI spec. Documentation will be unavailable.", "error", err)
+		logger.Error(fmt.Sprintf("Failed to load OpenAPI spec. Documentation will be unavailable, error: %s", err))
 		// No fallback to hardcoded docs, h.docs remains nil
 	} else {
 		handler.openAPIDoc = doc
@@ -405,16 +405,36 @@ func getBaseURL(doc *v3.Document) string {
 
 // createCurlExample creates an example curl command
 func createCurlExample(path string, method string, params []APIParameterDoc, body interface{}) string {
-	baseURL := "http://localhost:8080/api/v1"
+	// Use only the base URL without duplicating /api/v1
+	baseURL := "http://localhost:8080"
 
 	// Replace path parameters with example values
 	pathWithParams := path
 	for _, param := range params {
 		if param.In == "path" && param.Example != nil {
+			var exampleValue string
+			// Extract proper string value for the example
+			switch v := param.Example.(type) {
+			case string:
+				exampleValue = v
+			case int, int64, float64, bool:
+				exampleValue = fmt.Sprintf("%v", v)
+			default:
+				// For complex objects, use a reasonable default
+				// Check if it's a domain parameter and use "example.com"
+				if param.Name == "host" || param.Name == "domain" {
+					exampleValue = "example.com"
+				} else if param.Name == "selector" {
+					exampleValue = "default"
+				} else {
+					exampleValue = "example" // Generic fallback
+				}
+			}
+
 			pathWithParams = strings.Replace(
 				pathWithParams,
 				fmt.Sprintf("{%s}", param.Name),
-				fmt.Sprintf("%v", param.Example),
+				exampleValue,
 				-1,
 			)
 		}
@@ -426,7 +446,22 @@ func createCurlExample(path string, method string, params []APIParameterDoc, bod
 	queryParams := []string{}
 	for _, param := range params {
 		if param.In == "query" && param.Example != nil {
-			queryParams = append(queryParams, fmt.Sprintf("%s=%v", param.Name, param.Example))
+			// Extract proper string representation for query params
+			var exampleValue string
+			switch v := param.Example.(type) {
+			case string:
+				exampleValue = v
+			case int, int64, float64, bool:
+				exampleValue = fmt.Sprintf("%v", v)
+			default:
+				// Use a reasonable default based on parameter name
+				if param.Name == "port" {
+					exampleValue = "25"
+				} else {
+					exampleValue = "example"
+				}
+			}
+			queryParams = append(queryParams, fmt.Sprintf("%s=%s", param.Name, exampleValue))
 		}
 	}
 
@@ -440,6 +475,11 @@ func createCurlExample(path string, method string, params []APIParameterDoc, bod
 		if err == nil {
 			curl += fmt.Sprintf(" -d '%s'", string(bodyJSON))
 		}
+	}
+
+	// Add content-type header for requests with body
+	if method == "POST" || method == "PUT" || method == "PATCH" {
+		curl += " -H 'Content-Type: application/json'"
 	}
 
 	return curl

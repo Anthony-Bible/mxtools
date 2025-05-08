@@ -5,8 +5,8 @@ go 1.23.0
 toolchain go1.23.8
 
 require (
-	github.com/gorilla/mux v1.8.1
 	github.com/miekg/dns v1.1.65
+	github.com/pb33f/libopenapi v0.21.10
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	golang.org/x/net v0.39.0
@@ -19,7 +19,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/pb33f/libopenapi v0.21.10 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect

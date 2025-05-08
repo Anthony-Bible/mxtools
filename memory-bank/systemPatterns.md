@@ -41,6 +41,7 @@ The MXClone system follows a layered, hexagonal architecture pattern (also known
 - Dependency injection
 - API server setup
 - Shared utilities, validation, error handling
+- OpenAPI specification and schema validation
 
 ## Design Patterns in Use
 
@@ -69,52 +70,64 @@ The MXClone system follows a layered, hexagonal architecture pattern (also known
 ### 6. Adapter Pattern
 - Converts external service responses to domain models
 
+### 7. Contract-First API Design
+- OpenAPI specification serves as the contract between frontend and backend
+- API endpoints implement the contract defined in the specification
+- Strong schema validation ensures adherence to the contract
+
 ## Component Relationships
 
 ### DNS Diagnostics Flow
 ```
-CLI/API Request → DnsCmd → DNSService Interface → DNSService Implementation 
+CLI/API Request → DnsCmd/API Handler → DNSService Interface → DNSService Implementation 
                 → DNS Repository Interface → DNS Repository Implementation 
                 → External DNS Servers → Repository → Service → Output
 ```
 
 ### Email Authentication Flow
 ```
-CLI/API Request → AuthCmd → EmailAuthService Interface → EmailAuthService Implementation 
+CLI/API Request → AuthCmd/API Handler → EmailAuthService Interface → EmailAuthService Implementation 
                 → EmailAuth Repository Interface → EmailAuth Repository Implementation 
                 → External DNS/Email Servers → Repository → Service → Output
 ```
 
 ### SMTP Testing Flow
 ```
-CLI/API Request → SMTPCmd → SMTPService Interface → SMTPService Implementation 
+CLI/API Request → SMTPCmd/API Handler → SMTPService Interface → SMTPService Implementation 
                 → SMTP Repository Interface → SMTP Repository Implementation 
                 → External SMTP Servers → Repository → Service → Output
+```
+
+### Web UI to API Flow
+```
+User Interaction → React Component → API Client → API Endpoint
+                → Domain Service → Repository → External Service
+                → Response Processing → UI State Update → UI Rendering
 ```
 
 ## Critical Implementation Paths
 
 ### DNS Lookup Path
 1. User provides domain and record type
-2. CLI validates input
+2. CLI/API validates input
 3. DNS service performs lookup
 4. Results converted to appropriate output format
-5. Displayed to user
+5. Displayed to user/returned via API
 
 ### Blacklist Check Path
 1. User provides IP or domain
-2. CLI validates input
+2. CLI/API validates input
 3. DNSBL service queries multiple blocklist providers
 4. Results aggregated
-5. Displayed to user
+5. Displayed to user/returned via API
 
 ### API Request Path
 1. HTTP request to API endpoint
-2. Request validation
+2. Request validation against OpenAPI schema
 3. Route to appropriate handler
 4. Handler calls domain service
 5. Service performs operation
-6. Results converted to JSON
+6. Results converted to JSON according to schema
 7. HTTP response returned
 
 ## Key Technical Decisions
@@ -125,3 +138,5 @@ CLI/API Request → SMTPCmd → SMTPService Interface → SMTPService Implementa
 4. **Custom DI Container**: Lightweight dependency management
 5. **Repository Pattern**: Isolates external dependencies
 6. **REST API with JSON**: Standard, language-agnostic communication
+7. **OpenAPI Specification**: Contract-first API design with strong typing
+8. **React/TypeScript**: Type safety and component-based UI architecture

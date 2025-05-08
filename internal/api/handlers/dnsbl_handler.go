@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"mxclone/internal/api/models"
 	"mxclone/pkg/validation"
 	"mxclone/ports/input"
@@ -31,7 +31,7 @@ func (h *DNSBLHandler) HandleDNSBLCheck(w http.ResponseWriter, r *http.Request) 
 	if ip = r.PathValue("target"); ip == "" {
 
 		// If not from path, read from request body
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(models.APIError{
