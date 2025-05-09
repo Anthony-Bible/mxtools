@@ -64,17 +64,36 @@ const Network: React.FC = () => {
             console.log('traceHops state:', hops);
           }
           if (job.status === 'complete') {
+            // Extract hops from the final result if available
+            if (job.result && Array.isArray((job.result as any).Hops) && (job.result as any).Hops.length > 0) {
+              const hopsRaw = (job.result as any).Hops;
+              const hops = hopsRaw.map((h: any) => ({
+                hop: h.Hop ?? h.HopNumber ?? h.Number ?? h.hop ?? h.number,
+                address: h.Address ?? h.IP,
+                rtt: formatRTT(h.RTT),
+                error: h.Error,
+              })) as { hop: number; address: string; rtt: string; error?: string }[];
+              setTraceHops(hops);
+            }
+            
             setResult(job.result ? {
               ...job.result,
               target: lastTraceHost,
-              targetReached: true
+              targetReached: true,
+              // Ensure hops are properly formatted for ResultView
+              hops: (job.result as any).Hops?.map((h: any) => ({
+                hop: h.Hop ?? h.HopNumber ?? h.Number ?? h.hop ?? h.number,
+                address: h.Address ?? h.IP ?? h.address ?? '',
+                rtt: formatRTT(h.RTT ?? h.rtt),
+                error: h.Error ?? h.error ?? ''
+              })) ?? []
             } : null);
             setLoading(false);
             setTraceJobId(null);
             setTraceJobStartTime(null);
             setTimeoutWarning(false);
             setCancelled(false);
-            setTraceHops([]);
+            // Don't clear traceHops here to keep displaying the table
             clearInterval(interval);
           } else if (job.status === 'error') {
             setError(job.error || 'Traceroute failed');
@@ -186,6 +205,8 @@ const Network: React.FC = () => {
   const showLoading = loading || (tool === 'traceroute' && traceJobId && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && !cancelled);
   const showStatus = tool === 'traceroute' && traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && !cancelled;
   const showCancel = tool === 'traceroute' && traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && !cancelled;
+  const showTraceTable = tool === 'traceroute' && traceHops.length > 0;
+  const showResult = (tool !== 'traceroute' || !showTraceTable) && result !== null;
 
   const currentTool = NETWORK_TOOLS.find(t => t.value === tool);
 
@@ -257,9 +278,9 @@ const Network: React.FC = () => {
       {tool === 'traceroute' && traceHops.length > 0 && (
         (() => { console.log('traceHops (before render):', traceHops); return null; })()
       )}
-      {tool === 'traceroute' && traceHops.length > 0 && (
+      {showTraceTable && (
         <div style={{ margin: '1em 0' }}>
-          <h4>Traceroute Progress</h4>
+          <h4>{traceJobStatus === 'complete' ? 'Traceroute Results' : 'Traceroute Progress'}</h4>
           {showLoading && <LoadingSpinner />}
           <table className="table table-sm table-bordered" style={{ 
             background: '#fafbfc', 
@@ -288,6 +309,11 @@ const Network: React.FC = () => {
                 ))}
             </tbody>
           </table>
+          {traceJobStatus === 'complete' && (
+            <div className="alert alert-success">
+              <strong>Traceroute complete!</strong> Traced route to {lastTraceHost}.
+            </div>
+          )}
         </div>
       )}
       {error && (
@@ -298,7 +324,7 @@ const Network: React.FC = () => {
           )}
         </div>
       )}
-      {result && <ResultView result={result} />}
+      {showResult && <ResultView result={result} />}
     </div>
   );
 };

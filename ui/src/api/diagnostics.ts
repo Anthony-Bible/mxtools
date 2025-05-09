@@ -88,6 +88,16 @@ export interface DKIMResponse {
   records?: Record<string, string>;
   isValid: boolean;
   error?: string;
+  // For combined response
+  results?: Array<{
+    domain: string;
+    selector: string;
+    hasRecords: boolean;
+    records?: Record<string, string>;
+    isValid: boolean;
+    error?: string;
+  }>;
+  selectors?: string[];
 }
 
 export interface DMARCResponse {

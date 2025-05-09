@@ -58,9 +58,17 @@ const Auth: React.FC = () => {
         if (useDefaultSelector) {
           // Use backend default selectors
           authResult.dkim = await dkimCheck(domain);
+          // Make sure the domain is set correctly for display
+          if (authResult.dkim && !authResult.dkim.domain) {
+            authResult.dkim.domain = domain;
+          }
         } else {
           // Use user-provided selector
           authResult.dkim = await dkimCheck(domain, dkimSelector);
+          // Make sure the domain is set correctly for display
+          if (authResult.dkim && !authResult.dkim.domain) {
+            authResult.dkim.domain = domain;
+          }
         }
       } catch (dkimErr: any) {
         authResult.dkim = {
