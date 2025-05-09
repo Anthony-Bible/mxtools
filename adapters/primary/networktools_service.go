@@ -126,3 +126,14 @@ func (a *NetworkToolsAdapter) WrapResult(toolType networktools.ToolType, pingRes
 func (a *NetworkToolsAdapter) FormatToolResult(result *networktools.NetworkToolResult) string {
 	return a.service.FormatNetworkToolSummary(result)
 }
+
+// ResolveDomain resolves a domain name to an IP address
+func (a *NetworkToolsAdapter) ResolveDomain(ctx context.Context, domain string) (string, error) {
+	return a.repository.ResolveDomain(ctx, domain)
+}
+
+// TracerouteHop performs a single hop of a traceroute to the target with the given TTL.
+func (a *NetworkToolsAdapter) TracerouteHop(ctx context.Context, target string, ttl int, timeout time.Duration) (networktools.TracerouteHop, bool, error) {
+	// Use the repository to execute a single-hop traceroute
+	return a.repository.ExecuteTracerouteHop(ctx, target, ttl, timeout)
+}

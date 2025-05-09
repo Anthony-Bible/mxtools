@@ -334,22 +334,63 @@ func (h *NetworkToolsHandler) HandleTracerouteAsync(w http.ResponseWriter, r *ht
 	store := internal.GetTracerouteJobStore()
 	store.Add(job)
 
-	// Start traceroute in background
+	// Start traceroute in background with progressive updates
 	go func(jobId, host string) {
 		store.Update(jobId, func(j *internal.TracerouteJob) {
 			j.Status = internal.JobRunning
 		})
-		// Use a background context with timeout, NOT the request context
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		result, err := h.networkToolsService.ExecuteTraceroute(ctx, host, 30, 15*time.Second)
+
+		resolvedIP, err := h.networkToolsService.ResolveDomain(ctx, host)
+		if err != nil {
+			resolvedIP = host
+		}
+
+		maxHops := 30
+		perHopTimeout := 2 * time.Second
+		hops := make([]networktools.TracerouteHop, 0, maxHops)
+		targetReached := false
+		for ttl := 1; ttl <= maxHops; ttl++ {
+			if ctx.Err() != nil {
+				break
+			}
+			hop, reached, _ := h.networkToolsService.TracerouteHop(ctx, resolvedIP, ttl, perHopTimeout)
+			hops = append(hops, hop)
+			if reached {
+				targetReached = true
+			}
+			// Update job with partial hops
+			store.Update(jobId, func(j *internal.TracerouteJob) {
+				if j.Result == nil {
+					j.Result = &networktools.TracerouteResult{
+						Target:       host,
+						ResolvedIP:   resolvedIP,
+						Hops:         []networktools.TracerouteHop{},
+						TargetReached: false,
+					}
+				}
+				j.Result.Hops = append([]networktools.TracerouteHop{}, hops...)
+				j.Result.TargetReached = targetReached
+				j.Status = internal.JobRunning
+			})
+			if reached {
+				break
+			}
+		}
+		// Final update: complete or error
 		store.Update(jobId, func(j *internal.TracerouteJob) {
-			if err != nil {
+			if ctx.Err() != nil {
 				j.Status = internal.JobError
-				j.Error = err.Error()
-			} else {
+				j.Error = ctx.Err().Error()
+			} else if targetReached {
 				j.Status = internal.JobComplete
-				j.Result = result
+				j.Result.Hops = append([]networktools.TracerouteHop{}, hops...)
+				j.Result.TargetReached = true
+			} else {
+				j.Status = internal.JobError
+				j.Error = "Traceroute did not reach target"
+				j.Result.Hops = append([]networktools.TracerouteHop{}, hops...)
 			}
 			completed := time.Now()
 			j.CompletedAt = &completed

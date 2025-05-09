@@ -34,6 +34,7 @@ const Network: React.FC = () => {
   const [traceJobStartTime, setTraceJobStartTime] = useState<number | null>(null);
   const [timeoutWarning, setTimeoutWarning] = useState<boolean>(false);
   const [cancelled, setCancelled] = useState(false);
+  const [traceHops, setTraceHops] = useState<{ hop: number; address: string; rtt: string; error?: string }[]>([]);
   const TIMEOUT_MS = 30000; // 30 seconds
 
   const handleToolChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -49,6 +50,19 @@ const Network: React.FC = () => {
         try {
           const job: TracerouteJob = await getTracerouteResult(traceJobId);
           setTraceJobStatus(job.status);
+          // Debug: log backend result and hops
+          console.log('Traceroute job.result:', job.result);
+          if (job.result && Array.isArray((job.result as any).Hops) && (job.result as any).Hops.length > 0) {
+            const hopsRaw = (job.result as any).Hops;
+            const hops = hopsRaw.map((h: any) => ({
+              hop: h.Hop ?? h.HopNumber ?? h.Number ?? h.hop ?? h.number,
+              address: h.Address ?? h.IP,
+              rtt: formatRTT(h.RTT),
+              error: h.Error,
+            })) as { hop: number; address: string; rtt: string; error?: string }[];
+            setTraceHops(hops);
+            console.log('traceHops state:', hops);
+          }
           if (job.status === 'complete') {
             setResult(job.result ? {
               ...job.result,
@@ -60,6 +74,7 @@ const Network: React.FC = () => {
             setTraceJobStartTime(null);
             setTimeoutWarning(false);
             setCancelled(false);
+            setTraceHops([]);
             clearInterval(interval);
           } else if (job.status === 'error') {
             setError(job.error || 'Traceroute failed');
@@ -84,6 +99,11 @@ const Network: React.FC = () => {
     }
     return undefined;
   }, [traceJobId, traceJobStatus, lastTraceHost, traceJobStartTime, cancelled]);
+
+  useEffect(() => {
+    // Only clear hops when explicitly cancelled, not on job completion or error
+    if (cancelled) setTraceHops([]);
+  }, [cancelled]);
 
   useEffect(() => {
     if (traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && traceJobStartTime && !cancelled) {
@@ -120,6 +140,7 @@ const Network: React.FC = () => {
     setTraceJobId(null);
     setTraceJobStatus(null);
     setTraceJobStartTime(null);
+    setTraceHops([]);
     // User must resubmit via form
   };
 
@@ -168,6 +189,51 @@ const Network: React.FC = () => {
 
   const currentTool = NETWORK_TOOLS.find(t => t.value === tool);
 
+  // Format RTT to milliseconds with consistent precision
+  const formatRTT = (rtt: string | undefined | null): string => {
+    if (!rtt) return '*';
+    
+    try {
+      // If already in ms format (e.g., "12.345ms")
+      if (typeof rtt === 'string' && rtt.endsWith('ms')) {
+        // Extract number and format to 2 decimal places
+        const ms = parseFloat(rtt.replace('ms', ''));
+        return `${ms.toFixed(2)}ms`;
+      }
+      
+      // If in µs format (e.g., "12345µs")
+      if (typeof rtt === 'string' && rtt.includes('µs')) {
+        // Convert microseconds to milliseconds
+        const us = parseFloat(rtt.replace('µs', ''));
+        return `${(us / 1000).toFixed(2)}ms`;
+      }
+      
+      // If in ns format (e.g., "12345678ns")
+      if (typeof rtt === 'string' && rtt.endsWith('ns')) {
+        // Convert nanoseconds to milliseconds
+        const ns = parseFloat(rtt.replace('ns', ''));
+        return `${(ns / 1000000).toFixed(2)}ms`;
+      }
+      
+      // If it's just a number (likely nanoseconds from Go's time.Duration)
+      if (!isNaN(Number(rtt))) {
+        const value = Number(rtt);
+        // If it's a large number (>100000), assume it's in nanoseconds
+        if (value > 100000) {
+          return `${(value / 1000000).toFixed(4)}ms`;
+        }
+        // Otherwise assume it's already in milliseconds
+        return `${value.toFixed(2)}ms`;
+      }
+      
+      // If format is unknown, return as is
+      return String(rtt);
+    } catch (e) {
+      console.error('Error formatting RTT:', e, 'RTT value:', rtt);
+      return '*';
+    }
+  };
+
   return (
     <div>
       <h2>Network Tools</h2>
@@ -185,6 +251,43 @@ const Network: React.FC = () => {
           {showCancel && (
             <button style={{ marginLeft: '1em' }} onClick={handleCancel}>Cancel</button>
           )}
+        </div>
+      )}
+      {/* Live hops table for progressive traceroute */}
+      {tool === 'traceroute' && traceHops.length > 0 && (
+        (() => { console.log('traceHops (before render):', traceHops); return null; })()
+      )}
+      {tool === 'traceroute' && traceHops.length > 0 && (
+        <div style={{ margin: '1em 0' }}>
+          <h4>Traceroute Progress</h4>
+          {showLoading && <LoadingSpinner />}
+          <table className="table table-sm table-bordered" style={{ 
+            background: '#fafbfc', 
+            width: '100%', 
+            maxWidth: '800px',
+            tableLayout: 'fixed'
+          }}>
+            <thead>
+              <tr>
+                <th style={{ width: '10%' }}>Hop</th>
+                <th style={{ width: '40%' }}>Address</th>
+                <th style={{ width: '25%' }}>RTT (ms)</th>
+                <th style={{ width: '25%' }}>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {traceHops
+                .filter(hop => hop.hop !== undefined && hop.hop !== null)
+                .map((hop, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: '8px 12px' }}>{hop.hop}</td>
+                    <td style={{ padding: '8px 12px' }}>{hop.address || '*'}</td>
+                    <td style={{ padding: '8px 12px' }}>{hop.rtt || '*'}</td>
+                    <td style={{ padding: '8px 12px' }}>{hop.error || ''}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         </div>
       )}
       {error && (

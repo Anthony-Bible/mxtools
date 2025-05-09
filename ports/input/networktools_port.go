@@ -26,4 +26,10 @@ type NetworkToolsPort interface {
 
 	// FormatToolResult returns a human-readable summary of a network tool result
 	FormatToolResult(result *networktools.NetworkToolResult) string
+
+	// ResolveDomain resolves a domain name to an IP address
+	ResolveDomain(ctx context.Context, domain string) (string, error)
+
+	// TracerouteHop performs a single hop of a traceroute to the target with the given TTL.
+	TracerouteHop(ctx context.Context, target string, ttl int, timeout time.Duration) (networktools.TracerouteHop, bool, error)
 }

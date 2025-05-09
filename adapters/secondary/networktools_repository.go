@@ -209,6 +209,51 @@ func (r *NetworkToolsRepository) ExecuteTracerouteCommand(ctx context.Context, t
 	return outputStr, hops, targetReached, err
 }
 
+// ExecuteTracerouteHop performs a single traceroute hop (with given TTL) to the target.
+func (r *NetworkToolsRepository) ExecuteTracerouteHop(ctx context.Context, target string, ttl int, timeout time.Duration) (networktools.TracerouteHop, bool, error) {
+	// Use system 'traceroute' with -m <ttl> -f <ttl> to probe a single hop
+	cmd := exec.CommandContext(ctx, "traceroute", "-n", "-w", strconv.Itoa(int(timeout.Seconds())), "-m", strconv.Itoa(ttl), "-f", strconv.Itoa(ttl), target)
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	// Parse output for this hop
+	hop := networktools.TracerouteHop{Number: ttl}
+	reached := false
+	if err != nil && len(outputStr) == 0 {
+		hop.Error = err.Error()
+		return hop, false, err
+	}
+	// Find the hop line: should be the first line after header
+	lines := strings.Split(outputStr, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "traceroute to") || len(strings.TrimSpace(line)) == 0 {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		// Hop number
+		hopNum, _ := strconv.Atoi(fields[0])
+		hop.Number = hopNum
+		// IP address or *
+		if fields[1] != "*" {
+			hop.IP = fields[1]
+			if len(fields) > 2 {
+				if rtt, err := strconv.ParseFloat(fields[2], 64); err == nil {
+					hop.RTT = time.Duration(rtt * float64(time.Millisecond))
+				}
+			}
+			// Consider reached if IP matches target
+			if hop.IP == target {
+				reached = true
+			}
+		}
+		break
+	}
+	return hop, reached, nil
+}
+
 // ResolveIP resolves an IP address to a hostname
 func (r *NetworkToolsRepository) ResolveIP(ctx context.Context, ip string) (string, error) {
 	// Create a resolver with a timeout

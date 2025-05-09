@@ -591,8 +591,8 @@ components:
       example: "10.5ms"
     TracerouteRttString:
       type: string
-      description: "A string representing a round-trip time value for traceroute (can be '*' or value ending with 'ms')."
-      pattern: "^(\\*|\\d+(\\.\\d+)?ms)$"
+      description: "A string representing a round-trip time value for traceroute. Can be '*', a value ending with 'ms', or a numeric value in nanoseconds."
+      pattern: "^(\\*|\\d+(\\.\\d+)?ms|\\d+)$"
       example: "12.1ms"
     DateTimeUTCString:
       type: string

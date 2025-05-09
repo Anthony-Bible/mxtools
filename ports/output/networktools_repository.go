@@ -26,4 +26,7 @@ type NetworkToolsRepository interface {
 
 	// ParseWHOISData parses raw WHOIS data to extract structured information
 	ParseWHOISData(rawData string) (string, string, string, []string, error)
+
+	// ExecuteTracerouteHop performs a single traceroute hop (with given TTL) to the target.
+	ExecuteTracerouteHop(ctx context.Context, target string, ttl int, timeout time.Duration) (networktools.TracerouteHop, bool, error)
 }
