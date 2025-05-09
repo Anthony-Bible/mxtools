@@ -26,6 +26,21 @@ Comprehensive testing of workflows and user interactions
 ## Phase 8: Async Traceroute Job System (Weeks 16-17)
 Implementation of async traceroute job system for backend and frontend
 
+- [x] Implement in-memory job store (map) for MVP (consider Redis/DB for production)
+- [x] Create POST /api/v1/network/traceroute/{host} to start async job, return jobId and status
+- [x] Launch traceroute in background goroutine, update job store on completion
+- [x] Create GET /api/v1/network/traceroute/result/{jobId} to poll for status/result
+- [x] Document endpoints in OpenAPI spec
+- [x] Implement progressive traceroute updates in frontend
+  - [x] Fix frontend to handle capitalized field names from backend
+  - [x] Implement robust field mapping for hop number, address, and RTT
+  - [x] Format RTT values consistently in milliseconds
+  - [x] Display partial results even when traceroute times out
+  - [x] Show asterisks for missing hop data
+  - [x] Update OpenAPI spec to document actual RTT format
+
+**MILESTONE 17: Async traceroute system with progressive updates complete**
+
 # Tasks with Time Estimates
 
 ## Phase 1: Foundation
@@ -232,13 +247,13 @@ Implementation of async traceroute job system for backend and frontend
 This milestone focuses on enhancing the user experience for traceroute jobs by providing partial/progressive updates in the frontend as hops are discovered.
 
 ### Tasks
-- [ ] Update backend to support streaming/progressive traceroute results (if not already supported)
-- [ ] Update API and TypeScript types to allow partial traceroute results
-- [ ] Update frontend polling logic to display hops incrementally as they are received
-- [ ] Add UI component to show traceroute progress (e.g., hops table updates live)
-- [ ] Add loading indicators for partial results
-- [ ] Add error handling for incomplete/partial jobs
-- [ ] Test partial/progressive updates in various network conditions
+- [x] Update backend to support streaming/progressive traceroute results (if not already supported)
+- [x] Update API and TypeScript types to allow partial traceroute results
+- [x] Update frontend polling logic to display hops incrementally as they are received
+- [x] Add UI component to show traceroute progress (e.g., hops table updates live)
+- [x] Add loading indicators for partial results
+- [x] Add error handling for incomplete/partial jobs
+- [x] Test partial/progressive updates in various network conditions
 
 **MILESTONE 17: Partial/Progressive Traceroute Updates in UI**
 

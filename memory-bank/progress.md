@@ -13,10 +13,10 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 | Blacklist Checking | ✅ Complete | Checks against multiple providers |
 | Email Authentication | ✅ Complete | SPF/DKIM/DMARC verification |
 | SMTP Testing | ✅ Complete | Connection, STARTTLS, and relay testing |
-| Network Tools | ✅ Complete | Ping, traceroute, and WHOIS (now includes async traceroute job system with robust frontend polling and error handling) |
+| Network Tools | ✅ Complete | Ping, traceroute, and WHOIS (now includes async traceroute job system with progressive frontend updates showing live hop discovery) |
 | API Server | ✅ Complete | All endpoints with validation and error handling |
 | API Documentation | ✅ Complete | Comprehensive OpenAPI specification with detailed schemas |
-| Web UI | 🚧 In Progress | React/TypeScript frontend with all features |
+| Web UI | ✅ Complete | React/TypeScript frontend with all features |
 | Documentation | 🚧 In Progress | CLI help, API docs, architecture docs |
 | Testing | 🚧 In Progress | Unit, integration, and E2E tests |
 | Containerization | ✅ Complete | Docker setup and compose configuration |
@@ -51,6 +51,16 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 - GitHub Actions workflow for automated builds and Docker image creation
 
 ## Recent Major Accomplishments
+
+### Milestone 17 Completion
+1. ✅ Implemented progressive traceroute updates in the frontend
+2. ✅ Added robust field mapping to handle backend data format variations
+3. ✅ Implemented RTT formatting to display consistent millisecond values
+4. ✅ Enhanced error handling to preserve partial results on timeout
+5. ✅ Improved UI with better table formatting and asterisks for missing data
+6. ✅ Updated OpenAPI specification to accurately document RTT format
+7. ✅ Fixed issues with hop number and address display in the traceroute table
+8. ✅ Added user-friendly features like persistent results after timeout
 
 ### Milestone 16 Completion
 1. ✅ Completed comprehensive OpenAPI specification with detailed schema definitions

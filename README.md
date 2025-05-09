@@ -10,11 +10,15 @@
 *   **DNS Blacklist (DNSBL) Checks:** Check domains or IPs against common DNS blacklists.
 *   **Email Authentication:** Verify SPF, DKIM, and DMARC records.
 *   **SMTP Checks:** Test SMTP server connectivity and capabilities.
-*   **Network Tools:** Perform ping, traceroute, and whois lookups.
+*   **Network Tools:** 
+    * Ping: Test connectivity with round-trip time measurement
+    * Traceroute: Trace network path with progressive updates as hops are discovered
+    * WHOIS: Look up domain registration information
 *   **Health Checks:** Basic health endpoint checks.
 *   **Structured Output:** Provides clear output for diagnostics.
 *   **Caching:** Caches results to speed up repeated queries (configurable).
 *   **Rate Limiting:** Built-in rate limiting for external services.
+*   **Web UI:** Modern React/TypeScript interface with real-time updates for long-running operations.
 
 ## Architecture
 
@@ -92,6 +96,22 @@ All endpoints accept a JSON body with at least a `target` field. Example endpoin
 Responses are JSON objects with diagnostic results or error messages.
 
 Rate limiting: Each client IP is limited to 10 requests per minute.
+
+## API Features
+
+The application provides a comprehensive REST API for all diagnostic tools:
+
+*   **DNS Endpoints:** Query various DNS record types.
+*   **DNSBL Endpoints:** Check against multiple blacklists.
+*   **SMTP Endpoints:** Test email server connectivity.
+*   **Network Tools:**
+    * `GET /api/v1/network/ping/{host}`: Ping a host
+    * `POST /api/v1/network/traceroute/{host}`: Start an async traceroute job
+    * `GET /api/v1/network/traceroute/result/{jobId}`: Poll for progressive traceroute results
+    * `GET /api/v1/network/whois/{domain}`: WHOIS lookup
+*   **Health Endpoint:** Basic health check.
+
+All API endpoints are documented with OpenAPI/Swagger.
 
 ## Running the Web UI
 
@@ -224,4 +244,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
