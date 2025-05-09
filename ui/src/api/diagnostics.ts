@@ -308,14 +308,14 @@ export async function dmarcCheck(domain: string): Promise<DMARCResponse> {
 export async function pingHost(host: string, count?: number, timeout?: number): Promise<PingResponse> {
   try {
     const params = new URLSearchParams();
-    params.append('host', host); // Add host as query param too
     if (count !== undefined) params.append('count', count.toString());
     if (timeout !== undefined) params.append('timeout', timeout.toString());
     
-    const url = `${API_BASE}/network/ping/${encodeURIComponent(host)}`;
-    const fullUrl = `${url}?${params.toString()}`;
-    
-    const response = await axios.post(fullUrl);
+    let url = `${API_BASE}/network/ping/${encodeURIComponent(host)}`;
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    const response = await axios.post(url);
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);
@@ -325,14 +325,14 @@ export async function pingHost(host: string, count?: number, timeout?: number): 
 export async function tracerouteHost(host: string, maxHops?: number, timeout?: number): Promise<TracerouteResponse> {
   try {
     const params = new URLSearchParams();
-    params.append('host', host); // Add host as query param too
     if (maxHops !== undefined) params.append('maxHops', maxHops.toString());
     if (timeout !== undefined) params.append('timeout', timeout.toString());
     
-    const url = `${API_BASE}/network/traceroute/${encodeURIComponent(host)}`;
-    const fullUrl = `${url}?${params.toString()}`;
-    
-    const response = await axios.post(fullUrl);
+    let url = `${API_BASE}/network/traceroute/${encodeURIComponent(host)}`;
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    const response = await axios.post(url);
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);
@@ -341,13 +341,8 @@ export async function tracerouteHost(host: string, maxHops?: number, timeout?: n
 
 export async function whoisLookup(domain: string): Promise<WHOISResponse> {
   try {
-    const params = new URLSearchParams();
-    params.append('domain', domain); // Add domain as query param too
-    
-    const url = `${API_BASE}/network/whois/${encodeURIComponent(domain)}`;
-    const fullUrl = `${url}?${params.toString()}`;
-    
-    const response = await axios.post(fullUrl);
+    let url = `${API_BASE}/network/whois/${encodeURIComponent(domain)}`;
+    const response = await axios.post(url);
     return response.data;
   } catch (error: any) {
     return handleAxiosError(error);
