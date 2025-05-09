@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.23.8
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/miekg/dns v1.1.65
 	github.com/pb33f/libopenapi v0.21.10
 	github.com/spf13/cobra v1.9.1

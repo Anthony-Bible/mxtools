@@ -17,6 +17,10 @@ Recent development has concentrated on:
 2. Finalized OpenAPI documentation with detailed schema definitions for all data types
 3. Enhanced input validation and error handling across all endpoints
 4. Set up comprehensive testing for the API server and endpoints
+5. Implemented async traceroute job system (backend and frontend):
+   - Backend now launches traceroute jobs in the background with a dedicated context, avoiding premature cancellation.
+   - Frontend now polls job status, displays progress, and handles timeouts and errors robustly.
+   - Fixed bug where using the HTTP request context caused jobs to be canceled early (now uses background context with timeout).
 
 ## Next Steps
 
@@ -27,6 +31,7 @@ Immediate next steps include:
    - Implement responsive design for all device sizes
    - Add visualization components for complex data (DNS records, traceroute)
    - Integrate with API using consistent error handling
+   - Continue refining async job UI for better user feedback and extensibility
 
 2. Enhance API documentation
    - Ensure all endpoints have comprehensive examples

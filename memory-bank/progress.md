@@ -13,7 +13,7 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 | Blacklist Checking | ✅ Complete | Checks against multiple providers |
 | Email Authentication | ✅ Complete | SPF/DKIM/DMARC verification |
 | SMTP Testing | ✅ Complete | Connection, STARTTLS, and relay testing |
-| Network Tools | ✅ Complete | Ping, traceroute, and WHOIS |
+| Network Tools | ✅ Complete | Ping, traceroute, and WHOIS (now includes async traceroute job system with robust frontend polling and error handling) |
 | API Server | ✅ Complete | All endpoints with validation and error handling |
 | API Documentation | ✅ Complete | Comprehensive OpenAPI specification with detailed schemas |
 | Web UI | 🚧 In Progress | React/TypeScript frontend with all features |
@@ -60,6 +60,10 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 5. ✅ Added detailed string pattern schemas for improved validation
 6. ✅ Created consistent response formats for all diagnostic tools
 7. ✅ Ensured all API endpoints conform to the specification
+8. ✅ Completed async traceroute job system:
+   - Backend jobs now run with a background context and timeout, preventing premature cancellation
+   - Frontend polls job status, shows progress, and handles timeouts/errors
+   - Fixed context bug that caused jobs to be canceled early
 
 ## What's Next for Future Versions
 

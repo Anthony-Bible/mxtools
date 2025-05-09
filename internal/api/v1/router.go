@@ -210,6 +210,29 @@ func (r *Router) setupRoutes() {
 		r.networkToolsHandler.HandleWhois(w, req.WithContext(ctx))
 	})
 
+	// Async traceroute job endpoints
+	r.mux.HandleFunc("POST /network/traceroute/{host}/async", func(w http.ResponseWriter, req *http.Request) {
+		host := req.PathValue("host")
+		params := map[string]string{"host": host}
+		valid, errs := r.paramValidator.ValidateHostParam(params)
+		if !valid {
+			r.errorHandler.HandleValidationError(w, "Invalid host parameter", errs)
+			return
+		}
+		ctx := context.WithValue(req.Context(), "host", host)
+		r.networkToolsHandler.HandleTracerouteAsync(w, req.WithContext(ctx))
+	})
+
+	r.mux.HandleFunc("GET /network/traceroute/result/{jobId}", func(w http.ResponseWriter, req *http.Request) {
+		jobId := req.PathValue("jobId")
+		if jobId == "" {
+			r.errorHandler.HandleValidationError(w, "jobId parameter is required", nil)
+			return
+		}
+		ctx := context.WithValue(req.Context(), "jobId", jobId)
+		r.networkToolsHandler.HandleTracerouteJobResult(w, req.WithContext(ctx))
+	})
+
 	// Health check endpoint - GET method
 	r.mux.HandleFunc("GET /health", r.handleHealth)
 	r.mux.HandleFunc("GET /health/", r.handleHealth)

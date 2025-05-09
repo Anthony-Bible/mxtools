@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"mxclone/domain/networktools"
@@ -11,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mxclone/internal"
 )
 
 // NetworkToolsHandler encapsulates handlers for network diagnostic tools
@@ -310,4 +313,77 @@ func (h *NetworkToolsHandler) HandleNetworkTools(w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// Async traceroute job start handler
+func (h *NetworkToolsHandler) HandleTracerouteAsync(w http.ResponseWriter, r *http.Request) {
+	host, ok := r.Context().Value("host").(string)
+	if !ok || host == "" {
+		host = r.URL.Query().Get("host")
+	}
+	if host == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(models.APIError{
+			Error: "Host parameter is required",
+			Code:  http.StatusBadRequest,
+		})
+		return
+	}
+
+	job := internal.NewTracerouteJob(host)
+	store := internal.GetTracerouteJobStore()
+	store.Add(job)
+
+	// Start traceroute in background
+	go func(jobId, host string) {
+		store.Update(jobId, func(j *internal.TracerouteJob) {
+			j.Status = internal.JobRunning
+		})
+		// Use a background context with timeout, NOT the request context
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		result, err := h.networkToolsService.ExecuteTraceroute(ctx, host, 30, 15*time.Second)
+		store.Update(jobId, func(j *internal.TracerouteJob) {
+			if err != nil {
+				j.Status = internal.JobError
+				j.Error = err.Error()
+			} else {
+				j.Status = internal.JobComplete
+				j.Result = result
+			}
+			completed := time.Now()
+			j.CompletedAt = &completed
+		})
+	}(job.JobID, host)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"jobId": job.JobID,
+		"status": job.Status,
+	})
+}
+
+// Async traceroute job result poll handler
+func (h *NetworkToolsHandler) HandleTracerouteJobResult(w http.ResponseWriter, r *http.Request) {
+	jobId, ok := r.Context().Value("jobId").(string)
+	if !ok || jobId == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(models.APIError{
+			Error: "jobId parameter is required",
+			Code:  http.StatusBadRequest,
+		})
+		return
+	}
+	store := internal.GetTracerouteJobStore()
+	job, found := store.Get(jobId)
+	if !found {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(models.APIError{
+			Error: "Job not found",
+			Code:  http.StatusNotFound,
+		})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(job)
 }

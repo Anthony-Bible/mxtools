@@ -130,7 +130,7 @@ paths:
       tags:
         - auth
       summary: /api/v1/auth/dmarc/{host}
-      description: Retrievesthe DMARC (Domain-based Message Authentication, Reporting & Conformance) record for the given host.
+      description: Retrieves the DMARC (Domain-based Message Authentication, Reporting & Conformance) record for the given host.
       responses:
         "200":
           content:
@@ -315,6 +315,95 @@ paths:
           schema:
             $ref: "#/components/schemas/HostOrIPAddressString"
           example: "example.com"
+  /api/v1/network/traceroute/{host}/async:
+    post:
+      operationId: start_traceroute_job
+      tags:
+        - network
+      summary: Start async traceroute job
+      description: Starts a traceroute job for the specified host asynchronously. Returns a jobId and initial status. Poll /network/traceroute/result/{jobId} for results.
+      parameters:
+        - name: host
+          in: path
+          required: true
+          description: The host (domain or IP) to traceroute.
+          schema:
+            $ref: "#/components/schemas/HostOrIPAddressString"
+          example: "example.com"
+      responses:
+        "200":
+          description: Job started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                    description: Unique job identifier
+                  status:
+                    type: string
+                    enum: [pending, running]
+                    description: Initial job status
+              examples:
+                Example:
+                  value:
+                    jobId: "abc123"
+                    status: "pending"
+  /api/v1/network/traceroute/result/{jobId}:
+    get:
+      operationId: get_traceroute_job_result
+      tags:
+        - network
+      summary: Get traceroute job status/result
+      description: Get the status and result of a traceroute job by jobId. Returns status, result, error, and timestamps.
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: The jobId returned from the async traceroute start endpoint.
+          schema:
+            type: string
+          example: "abc123"
+      responses:
+        "200":
+          description: Job status/result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TracerouteJob"
+              examples:
+                Example:
+                  value:
+                    jobId: "abc123"
+                    status: "complete"
+                    result:
+                      hops:
+                        - hop: 1
+                          address: "192.168.1.1"
+                          rtt: "1.2ms"
+                        - hop: 2
+                          address: "203.0.113.10"
+                          rtt: "10.5ms"
+                    error: ""
+                    createdAt: "2025-05-08T21:07:13Z"
+                    completedAt: "2025-05-08T21:07:18Z"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: integer
+              examples:
+                NotFound:
+                  value:
+                    error: "Job not found"
+                    code: 404
   /api/v1/network/whois/{host}:
     post:
       operationId: create_whois_lookup
@@ -1045,3 +1134,54 @@ components:
       # For now, let's assume no specific sub-properties are always required
       # required:
       #   - record_value
+    TracerouteJob:
+      type: object
+      description: Traceroute job status and result
+      properties:
+        jobId:
+          type: string
+          description: Unique job identifier
+        status:
+          type: string
+          enum: [pending, running, complete, error]
+          description: Job status
+        result:
+          $ref: "#/components/schemas/TracerouteResult"
+        error:
+          type: string
+          description: Error message if job failed
+        createdAt:
+          type: string
+          format: date-time
+          description: Job creation time (ISO8601)
+        completedAt:
+          type: string
+          format: date-time
+          description: Job completion time (ISO8601, if complete)
+      required:
+        - jobId
+        - status
+        - result
+        - error
+        - createdAt
+        - completedAt
+    TracerouteResult:
+      type: object
+      description: The result of a traceroute operation
+      properties:
+        hops:
+          type: array
+          items:
+            type: object
+            properties:
+              hop:
+                type: integer
+                description: Hop number
+              address:
+                type: string
+                description: IP address or hostname of the hop
+              rtt:
+                $ref: "#/components/schemas/TracerouteRttString"
+          description: List of hops traversed
+      required:
+        - hops

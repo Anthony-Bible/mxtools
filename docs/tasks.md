@@ -23,6 +23,9 @@ Styling and responsiveness improvements
 ## Phase 7: End-to-End Testing (Weeks 15)
 Comprehensive testing of workflows and user interactions
 
+## Phase 8: Async Traceroute Job System (Weeks 16-17)
+Implementation of async traceroute job system for backend and frontend
+
 # Tasks with Time Estimates
 
 ## Phase 1: Foundation
@@ -165,8 +168,7 @@ Comprehensive testing of workflows and user interactions
 
 **MILESTONE 13: End-to-End testing complete**
 
-**FINAL MILESTONE: MXToolbox Clone v1.0 Ready for Deployment**
-
+## Phase 8: Async Traceroute Job System
 ## Post v1.0 Enhancements
 
 ### API Layer with Hexagonal Architecture
@@ -207,3 +209,23 @@ Comprehensive testing of workflows and user interactions
 109. [x] Update API versioning to include all new endpoints (2h)
 
 **MILESTONE 15: Remaining API Endpoints Implementation Complete**
+
+
+### Backend (Go API)
+- [x] Design TracerouteJob struct (jobId, status, result, error, timestamps)
+- [x] Implement in-memory job store (map) for MVP (consider Redis/DB for production)
+- [x] Create POST /api/v1/network/traceroute/{host} to start async job, return jobId and status
+- [x] Launch traceroute in background goroutine, update job store on completion
+- [x] Create GET /api/v1/network/traceroute/result/{jobId} to poll for status/result
+- [x] Document endpoints in OpenAPI spec
+- [ ] Add cleanup/expiry for finished jobs (optional)
+
+### Frontend (React/TypeScript)
+- [x] Update API layer: tracerouteHost to call POST, get jobId
+- [x] Add getTracerouteResult(jobId) to poll for results
+- [ ] Update UI: show progress/loading, poll until complete/error, display result
+- [ ] Add error handling and UX for timeouts/cancellation
+
+**MILESTONE 16: Async traceroute job system implemented and integrated in UI**
+
+**FINAL MILESTONE: MXToolbox Clone v1.0 Ready for Deployment**

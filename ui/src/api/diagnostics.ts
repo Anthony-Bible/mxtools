@@ -349,6 +349,40 @@ export async function whoisLookup(domain: string): Promise<WHOISResponse> {
   }
 }
 
+// --- ASYNC TRACEROUTE JOB SYSTEM ---
+export interface TracerouteJob {
+  jobId: string;
+  status: 'pending' | 'running' | 'complete' | 'error';
+  result?: TracerouteResult;
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface TracerouteResult {
+  hops: Array<{
+    hop: number;
+    address: string;
+    rtt: string;
+  }>;
+}
+
+/**
+ * Start an async traceroute job. Returns jobId and initial status.
+ */
+export async function tracerouteHostAsync(host: string): Promise<{ jobId: string; status: string }> {
+  const res = await axios.post(`${API_BASE}/network/traceroute/${encodeURIComponent(host)}/async`);
+  return res.data;
+}
+
+/**
+ * Poll for async traceroute job status/result by jobId.
+ */
+export async function getTracerouteResult(jobId: string): Promise<TracerouteJob> {
+  const res = await axios.get(`${API_BASE}/network/traceroute/result/${encodeURIComponent(jobId)}`);
+  return res.data;
+}
+
 // API Documentation
 export async function getApiDocs(group?: string): Promise<APIDocs | APIGroupDoc> {
   try {
