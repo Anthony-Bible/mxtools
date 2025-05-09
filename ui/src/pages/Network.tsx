@@ -33,6 +33,7 @@ const Network: React.FC = () => {
   const [lastTraceHost, setLastTraceHost] = useState<string>('');
   const [traceJobStartTime, setTraceJobStartTime] = useState<number | null>(null);
   const [timeoutWarning, setTimeoutWarning] = useState<boolean>(false);
+  const [cancelled, setCancelled] = useState(false);
   const TIMEOUT_MS = 30000; // 30 seconds
 
   const handleToolChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -42,7 +43,7 @@ const Network: React.FC = () => {
   };
 
   useEffect(() => {
-    if (traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error') {
+    if (traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && !cancelled) {
       if (!traceJobStartTime) setTraceJobStartTime(Date.now());
       const interval = setInterval(async () => {
         try {
@@ -58,6 +59,7 @@ const Network: React.FC = () => {
             setTraceJobId(null);
             setTraceJobStartTime(null);
             setTimeoutWarning(false);
+            setCancelled(false);
             clearInterval(interval);
           } else if (job.status === 'error') {
             setError(job.error || 'Traceroute failed');
@@ -65,6 +67,7 @@ const Network: React.FC = () => {
             setTraceJobId(null);
             setTraceJobStartTime(null);
             setTimeoutWarning(false);
+            setCancelled(false);
             clearInterval(interval);
           }
         } catch (err: any) {
@@ -73,29 +76,52 @@ const Network: React.FC = () => {
           setTraceJobId(null);
           setTraceJobStartTime(null);
           setTimeoutWarning(false);
+          setCancelled(false);
           clearInterval(interval);
         }
       }, 1500);
       return () => clearInterval(interval);
     }
     return undefined;
-  }, [traceJobId, traceJobStatus, lastTraceHost, traceJobStartTime]);
+  }, [traceJobId, traceJobStatus, lastTraceHost, traceJobStartTime, cancelled]);
 
   useEffect(() => {
-    if (traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && traceJobStartTime) {
+    if (traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && traceJobStartTime && !cancelled) {
       const timeout = setTimeout(() => {
         setTimeoutWarning(true);
-        setError('Traceroute is taking longer than expected. Please try again or check your network.');
+        setError('Traceroute timed out. You can try again.');
         setLoading(false);
         setTraceJobId(null);
         setTraceJobStatus(null);
         setTraceJobStartTime(null);
+        setCancelled(false);
       }, TIMEOUT_MS);
       return () => clearTimeout(timeout);
     } else {
       setTimeoutWarning(false);
     }
-  }, [traceJobId, traceJobStatus, traceJobStartTime]);
+  }, [traceJobId, traceJobStatus, traceJobStartTime, cancelled]);
+
+  const handleCancel = () => {
+    setCancelled(true);
+    setLoading(false);
+    setTraceJobId(null);
+    setTraceJobStatus(null);
+    setTraceJobStartTime(null);
+    setTimeoutWarning(false);
+    setError('Traceroute cancelled.');
+  };
+
+  const handleRetry = () => {
+    setResult(null);
+    setError(null);
+    setCancelled(false);
+    setTimeoutWarning(false);
+    setTraceJobId(null);
+    setTraceJobStatus(null);
+    setTraceJobStartTime(null);
+    // User must resubmit via form
+  };
 
   const handleSubmit = async (value: string) => {
     if (!value.trim()) {
@@ -109,6 +135,7 @@ const Network: React.FC = () => {
     setTraceJobStatus(null);
     setTraceJobStartTime(null);
     setTimeoutWarning(false);
+    setCancelled(false);
     if (tool === 'traceroute') setLastTraceHost(value);
     try {
       switch(tool) {
@@ -135,8 +162,9 @@ const Network: React.FC = () => {
     }
   };
 
-  const showLoading = loading || (tool === 'traceroute' && traceJobId && traceJobStatus !== 'complete' && traceJobStatus !== 'error');
-  const showStatus = tool === 'traceroute' && traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error';
+  const showLoading = loading || (tool === 'traceroute' && traceJobId && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && !cancelled);
+  const showStatus = tool === 'traceroute' && traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && !cancelled;
+  const showCancel = tool === 'traceroute' && traceJobId && traceJobStatus && traceJobStatus !== 'complete' && traceJobStatus !== 'error' && !cancelled;
 
   const currentTool = NETWORK_TOOLS.find(t => t.value === tool);
 
@@ -154,9 +182,19 @@ const Network: React.FC = () => {
       {showStatus && (
         <div style={{ margin: '1em 0', color: '#555' }}>
           Traceroute status: <b>{traceJobStatus}</b> {timeoutWarning && <span style={{ color: 'red' }}>(Timeout)</span>}
+          {showCancel && (
+            <button style={{ marginLeft: '1em' }} onClick={handleCancel}>Cancel</button>
+          )}
         </div>
       )}
-      {error && <ErrorAlert message={error} />}
+      {error && (
+        <div style={{ margin: '1em 0' }}>
+          <ErrorAlert message={error} />
+          {(timeoutWarning || cancelled) && (
+            <button onClick={handleRetry} style={{ marginTop: 8 }}>Try Again</button>
+          )}
+        </div>
+      )}
       {result && <ResultView result={result} />}
     </div>
   );

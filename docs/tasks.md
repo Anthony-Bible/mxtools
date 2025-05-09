@@ -210,7 +210,6 @@ Implementation of async traceroute job system for backend and frontend
 
 **MILESTONE 15: Remaining API Endpoints Implementation Complete**
 
-
 ### Backend (Go API)
 - [x] Design TracerouteJob struct (jobId, status, result, error, timestamps)
 - [x] Implement in-memory job store (map) for MVP (consider Redis/DB for production)
@@ -218,14 +217,29 @@ Implementation of async traceroute job system for backend and frontend
 - [x] Launch traceroute in background goroutine, update job store on completion
 - [x] Create GET /api/v1/network/traceroute/result/{jobId} to poll for status/result
 - [x] Document endpoints in OpenAPI spec
-- [ ] Add cleanup/expiry for finished jobs (optional)
+- [x] Add cleanup/expiry for finished jobs (optional)
 
 ### Frontend (React/TypeScript)
 - [x] Update API layer: tracerouteHost to call POST, get jobId
 - [x] Add getTracerouteResult(jobId) to poll for results
-- [ ] Update UI: show progress/loading, poll until complete/error, display result
-- [ ] Add error handling and UX for timeouts/cancellation
+- [x] Update UI: show progress/loading, poll until complete/error, display result
+- [x] Add error handling and UX for timeouts/cancellation
 
 **MILESTONE 16: Async traceroute job system implemented and integrated in UI**
+
+## Milestone 17: Partial Frontend Updates for Traceroute
+
+This milestone focuses on enhancing the user experience for traceroute jobs by providing partial/progressive updates in the frontend as hops are discovered.
+
+### Tasks
+- [ ] Update backend to support streaming/progressive traceroute results (if not already supported)
+- [ ] Update API and TypeScript types to allow partial traceroute results
+- [ ] Update frontend polling logic to display hops incrementally as they are received
+- [ ] Add UI component to show traceroute progress (e.g., hops table updates live)
+- [ ] Add loading indicators for partial results
+- [ ] Add error handling for incomplete/partial jobs
+- [ ] Test partial/progressive updates in various network conditions
+
+**MILESTONE 17: Partial/Progressive Traceroute Updates in UI**
 
 **FINAL MILESTONE: MXToolbox Clone v1.0 Ready for Deployment**

@@ -63,6 +63,33 @@ func (s *TracerouteJobStore) Update(jobID string, update func(*TracerouteJob)) {
 	}
 }
 
+func (s *TracerouteJobStore) StartCleanup(expiry time.Duration, interval time.Duration) {
+	go func() {
+		for {
+			time.Sleep(interval)
+			s.cleanupExpired(expiry)
+		}
+	}()
+}
+
+func (s *TracerouteJobStore) cleanupExpired(expiry time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	for id, job := range s.jobs {
+		if (job.Status == JobComplete || job.Status == JobError) && job.CompletedAt != nil {
+			if now.Sub(*job.CompletedAt) > expiry {
+				delete(s.jobs, id)
+			}
+		}
+	}
+}
+
 func GetTracerouteJobStore() *TracerouteJobStore {
 	return tracerouteJobStore
+}
+
+func init() {
+	// Start cleanup with 10 min expiry, runs every 1 min
+	tracerouteJobStore.StartCleanup(10*time.Minute, 1*time.Minute)
 }
