@@ -48,7 +48,7 @@ func NewRedisJobStore(addr, password string, db int, prefix string) (*RedisJobSt
 			}, nil
 		}
 
-		logging.Warn("RedisJobStore: Failed to connect to Redis (attempt %d/%d): %v. Retrying in %v...", i+1, maxRetries, err, retryDelay)
+		logging.Warning("RedisJobStore: Failed to connect to Redis (attempt %d/%d): %v. Retrying in %v...", i+1, maxRetries, err, retryDelay)
 		time.Sleep(retryDelay)
 	}
 
