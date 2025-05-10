@@ -24,26 +24,36 @@ type RedisJobStore struct {
 // db is the Redis database number.
 // prefix is a string to prefix all keys with (e.g., "traceroutejob:").
 func NewRedisJobStore(addr, password string, db int, prefix string) (*RedisJobStore, error) {
-	// print all the parameters
-	logging.Info("RedisJobStore: Creating Redis client with addr=%s, password=%s, db=%d, prefix=%s", addr, password, db, prefix)
+	logging.Info("RedisJobStore: Creating Redis client with addr=%s, db=%d, prefix=%s", addr, db, prefix) // Password omitted for security
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
 		DB:       db,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	maxRetries := 5 // Number of times to retry connection
+	retryDelay := 3 * time.Second
 
-	_, err := rdb.Ping(ctx).Result()
-	if err != nil {
-		return nil, errors.New("failed to connect to Redis: " + err.Error())
+	var err error
+	for i := 0; i < maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, err = rdb.Ping(ctx).Result()
+		cancel() // Release resources associated with context
+
+		if err == nil {
+			// Connection successful
+			return &RedisJobStore{
+				client: rdb,
+				prefix: prefix,
+			}, nil
+		}
+
+		logging.Warn("RedisJobStore: Failed to connect to Redis (attempt %d/%d): %v. Retrying in %v...", i+1, maxRetries, err, retryDelay)
+		time.Sleep(retryDelay)
 	}
 
-	return &RedisJobStore{
-		client: rdb,
-		prefix: prefix,
-	}, nil
+	// All retries failed
+	return nil, errors.New("failed to connect to Redis after multiple retries: " + err.Error())
 }
 
 func (s *RedisJobStore) jobKey(jobID string) string {
