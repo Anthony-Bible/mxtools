@@ -13,7 +13,7 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 | Blacklist Checking | ✅ Complete | Checks against multiple providers |
 | Email Authentication | ✅ Complete | SPF/DKIM/DMARC verification |
 | SMTP Testing | ✅ Complete | Connection, STARTTLS, and relay testing |
-| Network Tools | ✅ Complete | Ping, traceroute, and WHOIS (now includes async traceroute job system with progressive frontend updates showing live hop discovery) |
+| Network Tools | ✅ Complete | Ping, traceroute, and WHOIS (with progressive frontend updates) |
 | API Server | ✅ Complete | All endpoints with validation and error handling |
 | API Documentation | ✅ Complete | Comprehensive OpenAPI specification with detailed schemas |
 | Web UI | ✅ Complete | React/TypeScript frontend with all features |
@@ -52,6 +52,14 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 
 ## Recent Major Accomplishments
 
+### Milestone 18 Completion
+1. ✅ Enhanced OpenAPI documentation with expanded endpoint coverage
+2. ✅ Created comprehensive documentation of all 13 API endpoints
+3. ✅ Added query parameter documentation for SMTP, network tools endpoints
+4. ✅ Refined response schemas with accurate field typing
+5. ✅ Consolidated similar API endpoint specifications for better maintainability
+6. ✅ Improved error responses and status code consistency across all endpoints
+
 ### Milestone 17 Completion
 1. ✅ Implemented progressive traceroute updates in the frontend
 2. ✅ Added robust field mapping to handle backend data format variations
@@ -78,10 +86,10 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 ## What's Next for Future Versions
 
 ### Immediate Priorities
-1. Complete the Web UI implementation with all diagnostic tools
-2. Enhance API documentation with interactive examples
-3. Increase test coverage to >80% across all components
-4. Add comprehensive user documentation
+1. Consolidate OpenAPI specifications into a single authoritative version
+2. Complete user and developer documentation for all features
+3. Enhance API documentation with interactive examples
+4. Increase test coverage to >80% across all components
 
 ### Future Enhancements
 1. Add user accounts for saving results and preferences
@@ -99,6 +107,7 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 2. SMTP testing may be blocked by some ISPs on residential connections
 3. Network tools requiring elevated privileges need better fallback mechanisms
 4. Some Web UI components need optimization for mobile devices
+5. Multiple OpenAPI specification files need consolidation
 
 ## Lessons Learned
 
@@ -110,3 +119,4 @@ MXClone has successfully implemented all core functionality and API endpoints. T
 6. **Error Handling**: Centralized error handling improved user experience and debugging
 7. **API Documentation**: Self-documenting API endpoints made integration easier
 8. **Rate Limiting**: Multi-level rate limiting protected both the API and external services
+9. **Progressive Updates**: Implementing progressive updates for long-running operations significantly improves user experience

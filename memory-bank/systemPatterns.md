@@ -43,6 +43,13 @@ The MXClone system follows a layered, hexagonal architecture pattern (also known
 - Shared utilities, validation, error handling
 - OpenAPI specification and schema validation
 
+### 6. UI Layer (`ui/`)
+- React/TypeScript frontend
+- API client for communicating with backend
+- Component-based UI architecture
+- State management for diagnostic results
+- Progressive updates for long-running operations (like traceroute)
+
 ## Design Patterns in Use
 
 ### 1. Dependency Injection
@@ -75,6 +82,11 @@ The MXClone system follows a layered, hexagonal architecture pattern (also known
 - API endpoints implement the contract defined in the specification
 - Strong schema validation ensures adherence to the contract
 
+### 8. Progressive UI Updates Pattern
+- Long-running operations provide incremental results
+- Frontend polls for updates and renders partial data
+- Improves user experience for operations like traceroute
+
 ## Component Relationships
 
 ### DNS Diagnostics Flow
@@ -105,6 +117,13 @@ User Interaction → React Component → API Client → API Endpoint
                 → Response Processing → UI State Update → UI Rendering
 ```
 
+### Traceroute Progressive Updates Flow
+```
+User Request → API Endpoint → Background Job → Job Queue → Worker Process
+             → Incremental Result Collection → Poll API → UI Update
+             → Final Result or Timeout Handling → Complete UI Rendering
+```
+
 ## Critical Implementation Paths
 
 ### DNS Lookup Path
@@ -130,6 +149,15 @@ User Interaction → React Component → API Client → API Endpoint
 6. Results converted to JSON according to schema
 7. HTTP response returned
 
+### Progressive Traceroute Path
+1. User initiates traceroute request
+2. API endpoint creates background job
+3. Job executor begins traceroute process
+4. Each hop discovery updates job status
+5. Frontend polls job status endpoint
+6. Progressive UI updates as hops are discovered
+7. Final result or timeout handling with partial results
+
 ## Key Technical Decisions
 
 1. **Hexagonal Architecture**: Ensures separation of concerns and testability
@@ -140,3 +168,31 @@ User Interaction → React Component → API Client → API Endpoint
 6. **REST API with JSON**: Standard, language-agnostic communication
 7. **OpenAPI Specification**: Contract-first API design with strong typing
 8. **React/TypeScript**: Type safety and component-based UI architecture
+9. **Progressive Updates**: Improved UX for long-running operations
+10. **Background Job System**: Handling long-running operations without blocking
+
+## API Endpoint Design
+
+The API follows a consistent RESTful pattern:
+
+### Endpoint Structure
+- All endpoints under `/api/v1/` prefix
+- Resource-based paths (e.g., `/api/v1/dns`, `/api/v1/network/ping`)
+- HTTP POST for operations
+- JSON request/response bodies
+- Consistent error format across all endpoints
+
+### Common API Features
+- Strong input validation
+- Detailed error responses
+- Rate limiting
+- Standardized response structures
+- Content negotiation
+- CORS support for frontend integration
+
+### API Documentation
+- OpenAPI specifications in `docs/` directory
+- Detailed schema definitions for all data types
+- Query parameter documentation
+- Response format documentation
+- Status code documentation

@@ -15,7 +15,7 @@ spec:
         app: mxclone
     spec:
       imagePullSecrets:
-        - name: regcred 
+        - name: regcred
       containers:
         - name: mxclone
           image: ghcr.io/anthony-bible/mxclone:latest # Update with your registry/image if needed
@@ -26,6 +26,17 @@ spec:
           env:
             - name: UI_DIST_PATH
               value: /app/ui/dist
+            - name: MXCLONE_JOB_STORE_TYPE
+              value: "redis"
+            - name: MXCLONE_REDIS_ADDRESS
+              value: "redis-service:6379" # Assuming redis service is named redis-service
+            - name: MXCLONE_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret # Assuming a secret named redis-secret exists
+                  key: redis-password
+            - name: MXCLONE_REDIS_DB
+              value: "0"
           resources:
             limits:
               memory: "256Mi"
@@ -34,3 +45,24 @@ spec:
             capabilities:
               add:
                 - CAP_NET_ADMIN
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  selector:
+    app: mxclone # This should match the labels of the pods running Redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+

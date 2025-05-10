@@ -19,10 +19,15 @@
 - **CSS3/HTML5**: Frontend styling and markup
 - **Cypress**: End-to-end testing
 
+### API Documentation
+- **OpenAPI 3.1**: API specification format
+- **OpenAPI DevTools**: Tools for generating and validating specifications
+- **Swagger UI**: Interactive API documentation visualization
+
 ### Infrastructure
 - **Docker**: Containerization
 - **Kubernetes**: Container orchestration (optional deployment)
-- **OpenAPI/Swagger**: API documentation
+- **GitHub Actions**: CI/CD automation
 
 ## Development Setup
 
@@ -42,6 +47,7 @@
 - Integration testing for repository implementations
 - API testing with HTTP client
 - UI testing with Cypress
+- End-to-end testing of complete flows
 
 ## Technical Constraints
 
@@ -50,18 +56,21 @@
 - SMTP connections affected by external server response times
 - Rate limiting for outbound requests to prevent abuse
 - Concurrent request handling to improve throughput
+- Background job system for long-running operations
 
 ### Security Constraints
 - Input validation for all user-provided values
 - Output sanitization
 - API rate limiting to prevent abuse
 - No storage of sensitive credentials
+- CORS configuration for API security
 
 ### Compatibility Constraints
 - Go 1.18+ compatibility
 - Browser compatibility for Web UI (modern browsers)
 - DNS RFC compliance
 - SMTP protocol standard compliance
+- OpenAPI 3.1 specification compliance
 
 ### Deployment Constraints
 - Local machine installation
@@ -78,6 +87,7 @@
 ### Frontend Dependencies
 - Managed through npm (package.json)
 - Regular security audits
+- TypeScript for type safety
 
 ## Tool Usage Patterns
 
@@ -93,13 +103,36 @@
 
 ### Network Tools
 - Ping using ICMP echo
-- Traceroute using UDP or ICMP
+- Traceroute using UDP or ICMP with progressive updates
 - WHOIS lookups against regional registries
 
 ### SMTP Tools
 - SMTP connection testing
 - SMTP transaction simulation
 - TLS certificate validation
+
+## API Documentation Approach
+
+### OpenAPI Specification
+- Multiple specification files in development:
+  - `openapi-devtools-spec (3).json`: 8 core endpoints
+  - `spec4.son`: Expanded 13 endpoints with query parameters
+- Detailed schema definitions for all request/response types
+- Comprehensive type validation
+
+### API Endpoint Structure
+- Consistent RESTful endpoint design
+- Resource-based paths with `/api/v1/` prefix
+- POST operations for all diagnostic tools
+- Query parameters for configuration options
+- Detailed error responses
+
+### API Response Formats
+- Standardized JSON structures
+- Consistent field naming conventions
+- Strong typing for all fields
+- Clear error messages
+- Appropriate HTTP status codes
 
 ## Integration Points
 
@@ -115,6 +148,7 @@
 - API handlers ↔ Domain services
 - Domain services ↔ Repositories
 - Repositories ↔ External services
+- Frontend ↔ API endpoints
 
 ## Development Workflow
 
@@ -123,6 +157,12 @@
 - Clear separation between interfaces and implementations
 - Consistent error handling patterns
 - Extensive comments and documentation
+
+### API-First Development
+- OpenAPI specification as the source of truth
+- Schema validation against specification
+- Contract-first development approach
+- Consistent API patterns across endpoints
 
 ### Build and Deployment
 - Local development build

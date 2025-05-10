@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/miekg/dns v1.1.65
 	github.com/pb33f/libopenapi v0.21.10
+	github.com/redis/go-redis/v9 v9.8.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	golang.org/x/net v0.39.0
@@ -16,6 +17,8 @@ require (
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

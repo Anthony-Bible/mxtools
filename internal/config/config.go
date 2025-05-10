@@ -32,6 +32,18 @@ type Config struct {
 	// SMTP settings
 	SMTPTimeout int   `mapstructure:"smtp_timeout"`
 	SMTPPorts   []int `mapstructure:"smtp_ports"`
+
+	// JobStore settings
+	JobStoreType string      `mapstructure:"job_store_type"` // "inmemory" or "redis"
+	Redis        RedisConfig `mapstructure:"redis"`
+}
+
+// RedisConfig holds Redis-specific configuration.
+type RedisConfig struct {
+	Address  string `mapstructure:"redis_address"`
+	Password string `mapstructure:"redis_password"`
+	DB       int    `mapstructure:"redis_db"`
+	Prefix   string `mapstructure:"redis_prefix"`
 }
 
 // APIConfig contains API configuration options
@@ -68,6 +80,14 @@ func DefaultConfig() *Config {
 
 		SMTPTimeout: 10,
 		SMTPPorts:   []int{25, 465, 587},
+
+		JobStoreType: "inmemory", // Default to in-memory
+		Redis: RedisConfig{
+			Address:  "localhost:6379",
+			Password: "",
+			DB:       0,
+			Prefix:   "traceroutejob:",
+		},
 	}
 }
 
@@ -126,6 +146,11 @@ func LoadConfig(configFile string) (*Config, error) {
 	v.SetDefault("blacklist_cache_ttl", defaultConfig.BlacklistCacheTTL)
 	v.SetDefault("smtp_timeout", defaultConfig.SMTPTimeout)
 	v.SetDefault("smtp_ports", defaultConfig.SMTPPorts)
+	v.SetDefault("job_store_type", defaultConfig.JobStoreType)
+	v.SetDefault("redis.address", defaultConfig.Redis.Address)
+	v.SetDefault("redis.password", defaultConfig.Redis.Password)
+	v.SetDefault("redis.db", defaultConfig.Redis.DB)
+	v.SetDefault("redis.prefix", defaultConfig.Redis.Prefix)
 
 	// Set config file name and path
 	if configFile != "" {

@@ -331,19 +331,27 @@ func (h *NetworkToolsHandler) HandleTracerouteAsync(w http.ResponseWriter, r *ht
 	}
 
 	job := internal.NewTracerouteJob(host)
-	store := internal.GetTracerouteJobStore()
-	store.Add(job)
+	store := internal.GetJobStore() // Changed from GetTracerouteJobStore
+	err := store.Add(job)
+	if err != nil {
+		http.Error(w, "Failed to create traceroute job", http.StatusInternalServerError)
+		return
+	}
 
 	// Start traceroute in background with progressive updates
 	go func(jobId, host string) {
-		store.Update(jobId, func(j *internal.TracerouteJob) {
+		updateErr := store.Update(jobId, func(j *internal.TracerouteJob) {
 			j.Status = internal.JobRunning
 		})
+		if updateErr != nil {
+			return
+		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		resolvedIP, err := h.networkToolsService.ResolveDomain(ctx, host)
-		if err != nil {
+		resolvedIP, resolveErr := h.networkToolsService.ResolveDomain(ctx, host)
+		if resolveErr != nil {
 			resolvedIP = host
 		}
 
@@ -351,22 +359,27 @@ func (h *NetworkToolsHandler) HandleTracerouteAsync(w http.ResponseWriter, r *ht
 		perHopTimeout := 2 * time.Second
 		hops := make([]networktools.TracerouteHop, 0, maxHops)
 		targetReached := false
+		var finalError error
+
 		for ttl := 1; ttl <= maxHops; ttl++ {
 			if ctx.Err() != nil {
+				finalError = ctx.Err()
 				break
 			}
-			hop, reached, _ := h.networkToolsService.TracerouteHop(ctx, resolvedIP, ttl, perHopTimeout)
+			hop, reached, hopErr := h.networkToolsService.TracerouteHop(ctx, resolvedIP, ttl, perHopTimeout)
+			if hopErr != nil {
+			}
 			hops = append(hops, hop)
 			if reached {
 				targetReached = true
 			}
-			// Update job with partial hops
-			store.Update(jobId, func(j *internal.TracerouteJob) {
+
+			updateErr = store.Update(jobId, func(j *internal.TracerouteJob) {
 				if j.Result == nil {
 					j.Result = &networktools.TracerouteResult{
-						Target:       host,
-						ResolvedIP:   resolvedIP,
-						Hops:         []networktools.TracerouteHop{},
+						Target:        host,
+						ResolvedIP:    resolvedIP,
+						Hops:          []networktools.TracerouteHop{},
 						TargetReached: false,
 					}
 				}
@@ -374,32 +387,44 @@ func (h *NetworkToolsHandler) HandleTracerouteAsync(w http.ResponseWriter, r *ht
 				j.Result.TargetReached = targetReached
 				j.Status = internal.JobRunning
 			})
+			if updateErr != nil {
+			}
+
 			if reached {
 				break
 			}
 		}
-		// Final update: complete or error
-		store.Update(jobId, func(j *internal.TracerouteJob) {
-			if ctx.Err() != nil {
+
+		updateErr = store.Update(jobId, func(j *internal.TracerouteJob) {
+			now := time.Now()
+			j.CompletedAt = &now
+			if finalError != nil {
 				j.Status = internal.JobError
-				j.Error = ctx.Err().Error()
+				j.Error = finalError.Error()
 			} else if targetReached {
 				j.Status = internal.JobComplete
-				j.Result.Hops = append([]networktools.TracerouteHop{}, hops...)
-				j.Result.TargetReached = true
 			} else {
 				j.Status = internal.JobError
 				j.Error = "Traceroute did not reach target"
-				j.Result.Hops = append([]networktools.TracerouteHop{}, hops...)
 			}
-			completed := time.Now()
-			j.CompletedAt = &completed
+			if j.Result == nil {
+				j.Result = &networktools.TracerouteResult{
+					Target:        host,
+					ResolvedIP:    resolvedIP,
+					Hops:          []networktools.TracerouteHop{},
+					TargetReached: targetReached,
+				}
+			}
+			j.Result.Hops = append([]networktools.TracerouteHop{}, hops...)
+			j.Result.TargetReached = targetReached
 		})
+		if updateErr != nil {
+		}
 	}(job.JobID, host)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"jobId": job.JobID,
+		"jobId":  job.JobID,
 		"status": job.Status,
 	})
 }
@@ -415,8 +440,14 @@ func (h *NetworkToolsHandler) HandleTracerouteJobResult(w http.ResponseWriter, r
 		})
 		return
 	}
-	store := internal.GetTracerouteJobStore()
-	job, found := store.Get(jobId)
+	store := internal.GetJobStore() // Changed from GetTracerouteJobStore
+	job, found, err := store.Get(jobId)
+	if err != nil {
+		// Log the error and return an internal server error
+		// logging.Error("Failed to get job from store: %v", err)
+		http.Error(w, "Failed to retrieve traceroute job", http.StatusInternalServerError)
+		return
+	}
 	if !found {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(models.APIError{

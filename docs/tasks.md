@@ -258,3 +258,29 @@ This milestone focuses on enhancing the user experience for traceroute jobs by p
 **MILESTONE 17: Partial/Progressive Traceroute Updates in UI**
 
 **FINAL MILESTONE: MXToolbox Clone v1.0 Ready for Deployment**
+
+### Distributed Job Status Management for Kubernetes Deployments
+- **Goal:** Ensure reliable job status tracking across multiple replicas in a Kubernetes environment.
+- **Tasks:**
+    - [ ] **Research and Design:**
+        - [x] Evaluate shared storage options for job status (e.g., Redis, PostgreSQL, etcd).
+        - [x] Design the schema/data structure for storing job status in the chosen shared storage.
+        - [x] Define the strategy for connecting to the shared storage from application replicas.
+    - [ ] **Backend Implementation:**
+        - [x] Implement a new JobStore interface that abstracts the underlying storage mechanism.
+        - [x] Create an implementation of JobStore for the chosen shared storage solution (e.g., RedisJobStore).
+        - [x] Update the traceroute (and any other async job) service to use the new JobStore for creating, updating, and retrieving job status.
+        - [x] Ensure proper error handling and connection management for the shared storage.
+    - [ ] **Configuration and Deployment:**
+        - [x] Add configuration options for connecting to the shared storage (e.g., connection string, credentials).
+        - [x] Update Kubernetes deployment manifests (e.g., `k8s/deployment.yaml`) to:
+            - Include the chosen shared storage service (if deployed within the cluster, e.g., a Redis pod).
+            - Provide necessary environment variables/secrets to the application pods for connecting to the shared storage.
+    - [ ] **Testing:**
+        - [ ] Write unit tests for the new JobStore implementation.
+        - [ ] Write integration tests to verify job status tracking with the shared storage.
+        - [ ] Perform end-to-end testing in a multi-replica Kubernetes environment to confirm the fix.
+    - [ ] **Documentation:**
+        - [ ] Document the new shared storage dependency and configuration.
+        - [ ] Update any relevant architecture diagrams or deployment guides.
+
