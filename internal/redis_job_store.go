@@ -32,7 +32,7 @@ func NewRedisJobStore(addr, password string, db int, prefix string) (*RedisJobSt
 	})
 
 	maxRetries := 5 // Number of times to retry connection
-	retryDelay := 3 * time.Second
+	baseDelay := 1 * time.Second
 
 	var err error
 	for i := 0; i < maxRetries; i++ {
@@ -48,6 +48,7 @@ func NewRedisJobStore(addr, password string, db int, prefix string) (*RedisJobSt
 			}, nil
 		}
 
+		retryDelay := baseDelay * (1 << i) // Exponential backoff: 1s -> 2s -> 4s -> 8s -> 16s
 		logging.Warning("RedisJobStore: Failed to connect to Redis (attempt %d/%d): %v. Retrying in %v...", i+1, maxRetries, err, retryDelay)
 		time.Sleep(retryDelay)
 	}
@@ -61,6 +62,7 @@ func (s *RedisJobStore) jobKey(jobID string) string {
 }
 
 // Add adds a new job to Redis.
+// It returns an error if the job could not be added.
 func (s *RedisJobStore) Add(job *TracerouteJob) error {
 	ctx := context.Background()
 	jobJSON, err := json.Marshal(job)
