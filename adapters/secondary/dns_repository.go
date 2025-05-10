@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"mxclone/domain/dns"
 	"net"
+
+	mdns "github.com/miekg/dns"
 )
 
 // DNSRepository implements the DNS repository output port
@@ -122,9 +124,41 @@ func (r *DNSRepository) lookupNS(ctx context.Context, domain string) ([]string, 
 
 // lookupSOA performs an SOA record lookup
 func (r *DNSRepository) lookupSOA(ctx context.Context, domain string) ([]string, error) {
-	// Standard library doesn't have direct SOA lookup
-	// This is a placeholder - we'll implement this with miekg/dns later
-	return []string{"SOA lookup not implemented with standard library"}, nil
+	// Use miekg/dns for SOA lookup
+	m := new(mdns.Msg)
+	m.SetQuestion(mdns.Fqdn(domain), mdns.TypeSOA)
+
+	client := new(mdns.Client)
+	// Use system resolver if possible
+	server := ""
+	config, err := mdns.ClientConfigFromFile("/etc/resolv.conf")
+	if err == nil && len(config.Servers) > 0 {
+		server = config.Servers[0] + ":" + config.Port
+	} else {
+		server = "8.8.8.8:53" // fallback to Google DNS
+	}
+
+	resp, _, err := client.Exchange(m, server)
+	if err != nil {
+		return nil, fmt.Errorf("SOA lookup failed: %w", err)
+	}
+	if resp.Rcode != mdns.RcodeSuccess {
+		return nil, fmt.Errorf("SOA lookup failed with response code: %s", mdns.RcodeToString[resp.Rcode])
+	}
+
+	records := make([]string, 0)
+	for _, answer := range resp.Answer {
+		if soa, ok := answer.(*mdns.SOA); ok {
+			records = append(records, fmt.Sprintf(
+				"primary: %s, admin: %s, serial: %d, refresh: %d, retry: %d, expire: %d, ttl: %d",
+				soa.Ns, soa.Mbox, soa.Serial, soa.Refresh, soa.Retry, soa.Expire, soa.Minttl,
+			))
+		}
+	}
+	if len(records) == 0 {
+		return nil, fmt.Errorf("no SOA record found for domain: %s", domain)
+	}
+	return records, nil
 }
 
 // lookupPTR performs a PTR record lookup
