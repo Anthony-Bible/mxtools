@@ -4,7 +4,6 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN ls -la
 RUN CGO_ENABLED=0 GOOS=linux go build -o mxclone main.go
 
 FROM node:20 AS ui-builder

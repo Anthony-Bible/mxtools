@@ -61,15 +61,65 @@ func (m *MockDNSBLService) CheckMultipleDNSBLHealth(ctx interface{}, zones []str
 	return nil
 }
 
+// MockSMTPService is a mock implementation of input.SMTPPort
+type MockSMTPService struct {
+	// Add mock fields as needed
+}
+
+func (m *MockSMTPService) CheckSMTP(ctx interface{}, server string, port int, domain string, timeout time.Duration) (interface{}, error) {
+	// Mock implementation
+	return map[string]interface{}{"status": "smtp check ok"}, nil
+}
+
+
+	mockDNSBLService := &MockDNSBLService{}
+	mockSMTPService := &MockSMTPService{}
+	mockEmailAuthService := &MockEmailAuthService{}
+	mockNetworkToolsService := &MockNetworkToolsService{}
+
+	// Create a logger
+	logger := logging.NewLogger("test")
+
+	// Create API server
+	server := api.NewServer(
+		mockDNSService,
+		mockDNSBLService,
+		mockSMTPService,
+		mockEmailAuthService,
+		mockNetworkToolsService,
+		logger,
+	)
+
+	// Create test server
+
+func (m *MockEmailAuthService) CheckDMARC(ctx interface{}, domain string) (interface{}, error) {
+	// Mock implementation
+	return map[string]interface{}{"dmarc_record": "v=DMARC1; p=none;"}, nil
+}
+
+// MockNetworkToolsService is a mock implementation of input.NetworkToolsPort
+type MockNetworkToolsService struct {
+	// Add mock fields as needed
+}
+
+func (m *MockNetworkToolsService) Ping(ctx interface{}, host string, count int, timeout time.Duration) (interface{}, error) {
+	// Mock implementation
+	return map[string]interface{}{"ping_status": "ok", "rtt_avg": "10ms"}, nil
+}
+
+func (m *MockNetworkToolsService) Traceroute(ctx interface{}, host string, maxHops int, timeout time.Duration) (interface{}, error) {
+	// Mock implementation
+	return map[string]interface{}{"traceroute_hops": []string{"hop1", "hop2"}}, nil
+}
+
 func TestDNSHandler(t *testing.T) {
 	// Create mock services
 	mockDNSService := &MockDNSService{
 		result: &dns.DNSResult{
-			Records: map[string]interface{}{
-				"A":  []string{"192.0.2.1"},
-				"MX": []string{"10 mail.example.com."},
+			Lookups: map[string][]string{
+				string(dns.TypeA):  {"192.0.2.1"},
+				string(dns.TypeMX): {"10 mail.example.com."},
 			},
-			Timing: 100 * time.Millisecond,
 		},
 	}
 
@@ -120,16 +170,18 @@ func TestDNSHandler(t *testing.T) {
 				err := json.Unmarshal(body, &response)
 				if err != nil {
 					t.Errorf("Error unmarshaling response: %v", err)
+					return // Stop further processing if unmarshaling fails
 				}
 
 				// Check that records exist
-				if records, ok := response.Records.(map[string]interface{}); !ok {
-					t.Errorf("Expected records map, got %T", response.Records)
+				// response.Records is of type map[string][]string as per models.DNSResponse
+				if response.Records == nil {
+					t.Errorf("Expected records map, but it was nil")
 				} else {
-					if _, ok := records["A"]; !ok {
+					if _, ok := response.Records["A"]; !ok {
 						t.Errorf("Expected A records, got none")
 					}
-					if _, ok := records["MX"]; !ok {
+					if _, ok := response.Records["MX"]; !ok {
 						t.Errorf("Expected MX records, got none")
 					}
 				}

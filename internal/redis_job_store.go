@@ -7,8 +7,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"mxclone/pkg/logging" // Assuming a logging package
+
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisJobStore implements the JobStore interface using Redis.
@@ -23,6 +24,8 @@ type RedisJobStore struct {
 // db is the Redis database number.
 // prefix is a string to prefix all keys with (e.g., "traceroutejob:").
 func NewRedisJobStore(addr, password string, db int, prefix string) (*RedisJobStore, error) {
+	// print all the parameters
+	logging.Info("RedisJobStore: Creating Redis client with addr=%s, password=%s, db=%d, prefix=%s", addr, password, db, prefix)
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,

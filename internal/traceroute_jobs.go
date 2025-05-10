@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"mxclone/domain/networktools"
+
+	"github.com/google/uuid"
 )
 
 type TracerouteJobStatus string
@@ -113,21 +114,10 @@ func GetJobStore() JobStore {
 	return globalJobStore
 }
 
-func init() {
-	// Initialize with InMemoryJobStore or RedisJobStore based on config
-	cfg, err := config.LoadConfig("") // Load config with default paths
-	if err != nil {
-		// Fallback to in-memory if config loading fails, and log this
-		slog.Error("Failed to load config, defaulting to InMemoryJobStore", "error", err)
-		inMemoryStore := &InMemoryJobStore{
-			jobs: make(map[string]*TracerouteJob),
-		}
-		inMemoryStore.StartCleanup(10*time.Minute, 1*time.Minute)
-		globalJobStore = inMemoryStore
-		return
-	}
-
+// InitJobStore initializes the job store based on configuration
+func InitJobStore(cfg *config.Config) {
 	if cfg.JobStoreType == "redis" {
+		slog.Info("Redis address configuration", "address", cfg.Redis.Address)
 		redisStore, err := NewRedisJobStore(cfg.Redis.Address, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Prefix)
 		if err != nil {
 			slog.Error("Failed to initialize RedisJobStore, defaulting to InMemoryJobStore", "error", err)
@@ -141,7 +131,6 @@ func init() {
 			slog.Info("Using RedisJobStore")
 			globalJobStore = redisStore
 			// StartCleanup for RedisJobStore is a no-op or handled by Redis TTLs
-			// redisStore.StartCleanup(10*time.Minute, 1*time.Minute) // Or however cleanup is managed
 		}
 	} else {
 		slog.Info("Using InMemoryJobStore")
@@ -151,4 +140,14 @@ func init() {
 		inMemoryStore.StartCleanup(10*time.Minute, 1*time.Minute)
 		globalJobStore = inMemoryStore
 	}
+}
+
+// Initialize with default InMemoryJobStore for safety
+func init() {
+	// Default to in-memory store at package init time
+	inMemoryStore := &InMemoryJobStore{
+		jobs: make(map[string]*TracerouteJob),
+	}
+	inMemoryStore.StartCleanup(10*time.Minute, 1*time.Minute)
+	globalJobStore = inMemoryStore
 }

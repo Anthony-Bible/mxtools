@@ -83,7 +83,7 @@ func DefaultConfig() *Config {
 
 		JobStoreType: "inmemory", // Default to in-memory
 		Redis: RedisConfig{
-			Address:  "localhost:6379",
+			Address:  "redis-service:6379",
 			Password: "",
 			DB:       0,
 			Prefix:   "traceroutejob:",
@@ -147,10 +147,10 @@ func LoadConfig(configFile string) (*Config, error) {
 	v.SetDefault("smtp_timeout", defaultConfig.SMTPTimeout)
 	v.SetDefault("smtp_ports", defaultConfig.SMTPPorts)
 	v.SetDefault("job_store_type", defaultConfig.JobStoreType)
-	v.SetDefault("redis.address", defaultConfig.Redis.Address)
-	v.SetDefault("redis.password", defaultConfig.Redis.Password)
-	v.SetDefault("redis.db", defaultConfig.Redis.DB)
-	v.SetDefault("redis.prefix", defaultConfig.Redis.Prefix)
+	v.SetDefault("redis.redis_address", defaultConfig.Redis.Address)
+	v.SetDefault("redis.redis_password", defaultConfig.Redis.Password)
+	v.SetDefault("redis.redis_db", defaultConfig.Redis.DB)
+	v.SetDefault("redis.redis_prefix", defaultConfig.Redis.Prefix)
 
 	// Set config file name and path
 	if configFile != "" {
@@ -181,6 +181,34 @@ func LoadConfig(configFile string) (*Config, error) {
 	if err := v.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
-
 	return config, nil
+}
+
+// printConfig prints the configuration to the console
+func (c *Config) PrintConfig() {
+	fmt.Printf("Configuration:\n")
+	fmt.Printf("  Worker Count: %d\n", c.WorkerCount)
+	fmt.Printf("  Log Level: %s\n", c.LogLevel)
+	fmt.Printf("  Cache Directory: %s\n", c.CacheDir)
+	fmt.Printf("  DNS Timeout: %d seconds\n", c.DNSTimeout)
+	fmt.Printf("  DNS Retries: %d\n", c.DNSRetries)
+	fmt.Printf("  DNS Resolvers: %v\n", c.DNSResolvers)
+	fmt.Printf("  DNS Cache TTL: %d seconds\n", c.DNSCacheTTL)
+	fmt.Printf("  Blacklist Zones: %v\n", c.BlacklistZones)
+	fmt.Printf("  Blacklist Timeout: %d seconds\n", c.BlacklistTimeout)
+	fmt.Printf("  Blacklist Cache TTL: %d seconds\n", c.BlacklistCacheTTL)
+	fmt.Printf("  SMTP Timeout: %d seconds\n", c.SMTPTimeout)
+	fmt.Printf("  SMTP Ports: %v\n", c.SMTPPorts)
+	fmt.Printf("  Job Store Type: %s\n", c.JobStoreType)
+	if c.JobStoreType == "redis" {
+		fmt.Printf("  Redis Address: %s\n", c.Redis.Address)
+		// print the password but mask it with the same number of characters
+		if c.Redis.Password != "" {
+			fmt.Printf("  Redis Password: %s\n", string(make([]rune, len(c.Redis.Password))))
+		} else {
+			fmt.Printf("  Redis Password: %s\n", "none")
+		}
+		fmt.Printf("  Redis DB: %d\n", c.Redis.DB)
+		fmt.Printf("  Redis Prefix: %s\n", c.Redis.Prefix)
+	}
 }
