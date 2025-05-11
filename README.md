@@ -189,6 +189,13 @@ smtp_ports:               # SMTP ports to test
   - 587
 ```
 
+## Distributed Job Status Management & Shared Storage
+
+For distributed deployments (e.g., Kubernetes), mxclone supports job status tracking via a shared storage backend. By default, Redis is used for this purpose. This enables reliable async job tracking (such as progressive traceroute) across multiple replicas.
+
+- To enable Redis, set `job_store_type: "redis"` in your config or `MXCLONE_JOB_STORE_TYPE=redis` in your environment.
+- See [`docs/shared-storage.md`](docs/shared-storage.md) for full configuration, deployment, and security details.
+
 All configuration options can be overridden with environment variables by using the prefix `MXCLONE_` followed by the option name in uppercase. For example, `MXCLONE_LOG_LEVEL=debug`.
 
 ## Contributing
@@ -244,3 +251,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```

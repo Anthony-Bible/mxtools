@@ -2,13 +2,19 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"mxclone/domain/dns"
+	"mxclone/domain/dnsbl"
+	"mxclone/domain/emailauth"
+	"mxclone/domain/networktools"
+	"mxclone/domain/smtp"
 	"mxclone/internal/api"
 	"mxclone/internal/api/models"
 	"mxclone/pkg/logging"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 )
@@ -23,13 +29,13 @@ type MockDNSService struct {
 	err             error
 }
 
-func (m *MockDNSService) LookupAll(ctx interface{}, domain string) (*dns.DNSResult, error) {
+func (m *MockDNSService) LookupAll(ctx context.Context, domain string) (*dns.DNSResult, error) {
 	m.lookupAllCalled = true
 	m.target = domain
 	return m.result, m.err
 }
 
-func (m *MockDNSService) Lookup(ctx interface{}, domain string, recordType dns.RecordType) (*dns.DNSResult, error) {
+func (m *MockDNSService) Lookup(ctx context.Context, domain string, recordType dns.RecordType) (*dns.DNSResult, error) {
 	m.lookupCalled = true
 	m.target = domain
 	m.recordType = recordType
@@ -41,23 +47,23 @@ type MockDNSBLService struct {
 	// Add mock fields as needed for testing
 }
 
-func (m *MockDNSBLService) CheckSingleBlacklist(ctx interface{}, ip string, zone string, timeout time.Duration) (interface{}, error) {
+func (m *MockDNSBLService) CheckSingleBlacklist(ctx context.Context, ip string, zone string, timeout time.Duration) (*dnsbl.BlacklistResult, error) {
 	return nil, nil
 }
 
-func (m *MockDNSBLService) CheckMultipleBlacklists(ctx interface{}, ip string, zones []string, timeout time.Duration) interface{} {
-	return nil
+func (m *MockDNSBLService) CheckMultipleBlacklists(ctx context.Context, ip string, zones []string, timeout time.Duration) (*dnsbl.BlacklistResult, error) {
+	return nil, nil
 }
 
-func (m *MockDNSBLService) GetBlacklistSummary(result interface{}) string {
+func (m *MockDNSBLService) GetBlacklistSummary(result *dnsbl.BlacklistResult) string {
 	return ""
 }
 
-func (m *MockDNSBLService) CheckDNSBLHealth(ctx interface{}, zone string, timeout time.Duration) (bool, error) {
+func (m *MockDNSBLService) CheckDNSBLHealth(ctx context.Context, zone string, timeout time.Duration) (bool, error) {
 	return true, nil
 }
 
-func (m *MockDNSBLService) CheckMultipleDNSBLHealth(ctx interface{}, zones []string, timeout time.Duration) map[string]bool {
+func (m *MockDNSBLService) CheckMultipleDNSBLHealth(ctx context.Context, zones []string, timeout time.Duration) map[string]bool {
 	return nil
 }
 
@@ -66,35 +72,41 @@ type MockSMTPService struct {
 	// Add mock fields as needed
 }
 
-func (m *MockSMTPService) CheckSMTP(ctx interface{}, server string, port int, domain string, timeout time.Duration) (interface{}, error) {
-	// Mock implementation
-	return map[string]interface{}{"status": "smtp check ok"}, nil
+func (m *MockSMTPService) CheckSMTP(ctx context.Context, domain string, timeout time.Duration) (*smtp.SMTPResult, error) {
+	return &smtp.SMTPResult{Domain: domain, MXRecords: []string{"mx1.example.com"}, ConnectionResults: map[string]*smtp.ConnectionResult{}, Banner: "smtp check ok"}, nil
 }
 
+func (m *MockSMTPService) TestSMTPConnection(ctx context.Context, server string, port int, timeout time.Duration) (*smtp.ConnectionResult, error) {
+	return &smtp.ConnectionResult{Server: server, Connected: true}, nil
+}
 
-	mockDNSBLService := &MockDNSBLService{}
-	mockSMTPService := &MockSMTPService{}
-	mockEmailAuthService := &MockEmailAuthService{}
-	mockNetworkToolsService := &MockNetworkToolsService{}
+func (m *MockSMTPService) GetSMTPSummary(result *smtp.SMTPResult) string {
+	return "SMTP check summary"
+}
 
-	// Create a logger
-	logger := logging.NewLogger("test")
+// Add missing MockEmailAuthService struct
+type MockEmailAuthService struct {
+	// Add mock fields as needed
+}
 
-	// Create API server
-	server := api.NewServer(
-		mockDNSService,
-		mockDNSBLService,
-		mockSMTPService,
-		mockEmailAuthService,
-		mockNetworkToolsService,
-		logger,
-	)
+func (m *MockEmailAuthService) CheckSPF(ctx context.Context, domain string, timeout time.Duration) (*emailauth.SPFResult, error) {
+	return &emailauth.SPFResult{Record: "v=spf1 include:_spf.example.com ~all"}, nil
+}
 
-	// Create test server
+func (m *MockEmailAuthService) CheckDKIM(ctx context.Context, domain string, selectors []string, timeout time.Duration) (*emailauth.DKIMResult, error) {
+	return &emailauth.DKIMResult{HasRecords: true, Records: map[string]string{"selector1": "dkimrecord"}}, nil
+}
 
-func (m *MockEmailAuthService) CheckDMARC(ctx interface{}, domain string) (interface{}, error) {
-	// Mock implementation
-	return map[string]interface{}{"dmarc_record": "v=DMARC1; p=none;"}, nil
+func (m *MockEmailAuthService) CheckDMARC(ctx context.Context, domain string, timeout time.Duration) (*emailauth.DMARCResult, error) {
+	return &emailauth.DMARCResult{Record: "v=DMARC1; p=none;"}, nil
+}
+
+func (m *MockEmailAuthService) CheckAll(ctx context.Context, domain string, dkimSelectors []string, timeout time.Duration) (*emailauth.AuthResult, error) {
+	return &emailauth.AuthResult{Domain: domain}, nil
+}
+
+func (m *MockEmailAuthService) GetAuthSummary(result *emailauth.AuthResult) string {
+	return "Auth summary"
 }
 
 // MockNetworkToolsService is a mock implementation of input.NetworkToolsPort
@@ -102,14 +114,36 @@ type MockNetworkToolsService struct {
 	// Add mock fields as needed
 }
 
-func (m *MockNetworkToolsService) Ping(ctx interface{}, host string, count int, timeout time.Duration) (interface{}, error) {
-	// Mock implementation
-	return map[string]interface{}{"ping_status": "ok", "rtt_avg": "10ms"}, nil
+func (m *MockNetworkToolsService) ExecutePing(ctx context.Context, target string, count int, timeout time.Duration) (*networktools.PingResult, error) {
+	return &networktools.PingResult{Target: target, Success: true, RTTs: []time.Duration{10 * time.Millisecond}}, nil
 }
 
-func (m *MockNetworkToolsService) Traceroute(ctx interface{}, host string, maxHops int, timeout time.Duration) (interface{}, error) {
-	// Mock implementation
-	return map[string]interface{}{"traceroute_hops": []string{"hop1", "hop2"}}, nil
+func (m *MockNetworkToolsService) ExecuteTraceroute(ctx context.Context, target string, maxHops int, timeout time.Duration) (*networktools.TracerouteResult, error) {
+	return &networktools.TracerouteResult{Target: target, Hops: []networktools.TracerouteHop{{Number: 1, IP: "1.1.1.1", RTT: 10 * time.Millisecond}}}, nil
+}
+
+func (m *MockNetworkToolsService) ExecuteWHOIS(ctx context.Context, target string, timeout time.Duration) (*networktools.WHOISResult, error) {
+	return &networktools.WHOISResult{Target: target, RawData: "whois data"}, nil
+}
+
+func (m *MockNetworkToolsService) ExecuteNetworkTool(ctx context.Context, toolType networktools.ToolType, target string, options map[string]interface{}) (*networktools.NetworkToolResult, error) {
+	return &networktools.NetworkToolResult{ToolType: toolType}, nil
+}
+
+func (m *MockNetworkToolsService) WrapResult(toolType networktools.ToolType, pingResult *networktools.PingResult, tracerouteResult *networktools.TracerouteResult, whoisResult *networktools.WHOISResult, err error) *networktools.NetworkToolResult {
+	return &networktools.NetworkToolResult{ToolType: toolType, PingResult: pingResult, TracerouteResult: tracerouteResult, WHOISResult: whoisResult}
+}
+
+func (m *MockNetworkToolsService) FormatToolResult(result *networktools.NetworkToolResult) string {
+	return "Network tool result summary"
+}
+
+func (m *MockNetworkToolsService) ResolveDomain(ctx context.Context, domain string) (string, error) {
+	return "127.0.0.1", nil
+}
+
+func (m *MockNetworkToolsService) TracerouteHop(ctx context.Context, target string, ttl int, timeout time.Duration) (networktools.TracerouteHop, bool, error) {
+	return networktools.TracerouteHop{Number: ttl, IP: "1.1.1.1", RTT: 10 * time.Millisecond}, true, nil
 }
 
 func TestDNSHandler(t *testing.T) {
@@ -122,16 +156,21 @@ func TestDNSHandler(t *testing.T) {
 			},
 		},
 	}
-
 	mockDNSBLService := &MockDNSBLService{}
+	mockSMTPService := &MockSMTPService{}
+	mockEmailAuthService := &MockEmailAuthService{}
+	mockNetworkToolsService := &MockNetworkToolsService{}
 
 	// Create a logger
-	logger := logging.NewLogger("test")
+	logger := logging.NewLogger("test", logging.LevelDebug, os.Stderr)
 
 	// Create API server
 	server := api.NewServer(
 		mockDNSService,
 		mockDNSBLService,
+		mockSMTPService,
+		mockEmailAuthService,
+		mockNetworkToolsService,
 		logger,
 	)
 
@@ -215,7 +254,7 @@ func TestDNSHandler(t *testing.T) {
 		},
 	}
 
-	// Run test cases
+	// Run test
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Marshal request body

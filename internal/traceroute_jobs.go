@@ -3,6 +3,7 @@ package internal
 import (
 	"errors"
 	"log/slog" // Changed from mxclone/logging to log/slog
+	"mxclone/adapters/secondary"
 	"mxclone/internal/config"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"mxclone/domain/networktools"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type TracerouteJobStatus string
@@ -118,20 +120,15 @@ func GetJobStore() JobStore {
 func InitJobStore(cfg *config.Config) {
 	if cfg.JobStoreType == "redis" {
 		slog.Info("Redis address configuration", "address", cfg.Redis.Address)
-		redisStore, err := NewRedisJobStore(cfg.Redis.Address, cfg.Redis.Password, cfg.Redis.DB, cfg.Redis.Prefix)
-		if err != nil {
-			slog.Error("Failed to initialize RedisJobStore, defaulting to InMemoryJobStore", "error", err)
-			// Fallback to in-memory if Redis connection fails
-			inMemoryStore := &InMemoryJobStore{
-				jobs: make(map[string]*TracerouteJob),
-			}
-			inMemoryStore.StartCleanup(10*time.Minute, 1*time.Minute)
-			globalJobStore = inMemoryStore
-		} else {
-			slog.Info("Using RedisJobStore")
-			globalJobStore = redisStore
-			// StartCleanup for RedisJobStore is a no-op or handled by Redis TTLs
-		}
+		rdb := redis.NewClient(&redis.Options{
+			Addr:     cfg.Redis.Address,
+			Password: cfg.Redis.Password,
+			DB:       cfg.Redis.DB,
+		})
+		adapter := &secondary.RedisClientAdapter{Client: rdb}
+		redisStore := NewRedisJobStoreWithClient(adapter, cfg.Redis.Prefix)
+		globalJobStore = redisStore
+		// StartCleanup for RedisJobStore is a no-op or handled by Redis TTLs
 	} else {
 		slog.Info("Using InMemoryJobStore")
 		inMemoryStore := &InMemoryJobStore{

@@ -196,3 +196,18 @@ The API follows a consistent RESTful pattern:
 - Query parameter documentation
 - Response format documentation
 - Status code documentation
+
+## Distributed Job Status Management Pattern
+
+To support reliable async job tracking (such as progressive traceroute) in distributed/Kubernetes deployments, MXClone uses a shared storage backend for job status. The default implementation is Redis, but the JobStore interface allows for other backends (e.g., PostgreSQL, etcd).
+
+- All application replicas access and update job status via the shared store.
+- Enables horizontal scaling and consistent polling/progressive updates.
+- See `docs/shared-storage.md` for configuration, deployment, and security details.
+
+### Example Flow
+```
+User Request → API Endpoint → Background Job → JobStore (Redis) → Worker Process
+             → Incremental Result Collection → Poll API → UI Update
+             → Final Result or Timeout Handling → Complete UI Rendering
+```

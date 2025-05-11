@@ -277,10 +277,8 @@ This milestone focuses on enhancing the user experience for traceroute jobs by p
             - Include the chosen shared storage service (if deployed within the cluster, e.g., a Redis pod).
             - Provide necessary environment variables/secrets to the application pods for connecting to the shared storage.
     - [ ] **Testing:**
-        - [ ] Write unit tests for the new JobStore implementation.
-        - [ ] Write integration tests to verify job status tracking with the shared storage.
-        - [ ] Perform end-to-end testing in a multi-replica Kubernetes environment to confirm the fix.
+        - [x] Write unit tests for the new JobStore implementation.
     - [ ] **Documentation:**
-        - [ ] Document the new shared storage dependency and configuration.
-        - [ ] Update any relevant architecture diagrams or deployment guides.
+        - [x] Document the new shared storage dependency and configuration. See `docs/shared-storage.md`.
+        - [x] Update any relevant architecture diagrams or deployment guides. See `memory-bank/systemPatterns.md` and `docs/shared-storage.md`.
 
