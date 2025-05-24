@@ -23,26 +23,7 @@ var ApiCmd = &cobra.Command{
 		// Initialize the job store with the loaded configuration
 		internal.InitJobStore(cfg)
 
-		// Get services and logger from the shared DI container
-		dnsService := Container.GetDNSService()
-		dnsblService := Container.GetDNSBLService()
-		smtpService := Container.GetSMTPService()
-		emailAuthService := Container.GetEmailAuthService()
-		networkToolsService := Container.GetNetworkToolsService()
-		logger := Container.GetLogger()
-
-		// Start API server with dependencies
-		err = api.StartAPIServer(
-			dnsService,
-			dnsblService,
-			smtpService,
-			emailAuthService,
-			networkToolsService,
-			logger,
-		)
-
-		if err != nil {
-			logger.Fatal("Failed to start API server: %v", err)
-		}
+		// Start API server
+		api.StartAPIServer()
 	},
 }
